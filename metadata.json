@@ -1,0 +1,6 @@
+{
+  "name": "Saarathi",
+  "description": "Personal Productivity Operating System powered by AI Assistant Kairo",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "saarathi-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --workspace=saarathi-web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,css,json}\"",
+    "prepare": "husky"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.5.2",
+    "typescript": "~5.8.2"
+  }
+}
