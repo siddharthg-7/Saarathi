@@ -8,6 +8,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "lint:types": "npm run lint:types --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,css,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,css,json}\"",
     "prepare": "husky"
   },
   "workspaces": [
