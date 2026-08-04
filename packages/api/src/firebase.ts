@@ -18,13 +18,13 @@ const getEnvVar = (key: string): string => {
 };
 
 const firebaseConfig = {
-  apiKey: getEnvVar('FIREBASE_API_KEY'),
-  authDomain: getEnvVar('FIREBASE_AUTH_DOMAIN'),
-  projectId: getEnvVar('FIREBASE_PROJECT_ID'),
-  storageBucket: getEnvVar('FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: getEnvVar('FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getEnvVar('FIREBASE_APP_ID'),
-  measurementId: getEnvVar('FIREBASE_MEASUREMENT_ID'),
+  apiKey: getEnvVar('FIREBASE_API_KEY') || 'dummy-api-key',
+  authDomain: getEnvVar('FIREBASE_AUTH_DOMAIN') || 'dummy-auth-domain',
+  projectId: getEnvVar('FIREBASE_PROJECT_ID') || 'dummy-project-id',
+  storageBucket: getEnvVar('FIREBASE_STORAGE_BUCKET') || 'dummy-storage-bucket',
+  messagingSenderId: getEnvVar('FIREBASE_MESSAGING_SENDER_ID') || 'dummy-sender-id',
+  appId: getEnvVar('FIREBASE_APP_ID') || 'dummy-app-id',
+  measurementId: getEnvVar('FIREBASE_MEASUREMENT_ID') || 'dummy-measurement-id',
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
