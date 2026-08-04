@@ -15,11 +15,14 @@ const getEnvVar = (key: string): string => {
     if (process.env[`VITE_${key}`]) return process.env[`VITE_${key}`] as string;
     if (process.env[key]) return process.env[key] as string;
   }
-  const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env;
-  if (metaEnv) {
-    if (metaEnv[`VITE_${key}`]) return metaEnv[`VITE_${key}`];
-    if (metaEnv[`EXPO_PUBLIC_${key}`]) return metaEnv[`EXPO_PUBLIC_${key}`];
-  }
+  try {
+    const metaObj = (new Function('return import.meta'))();
+    const metaEnv = metaObj ? metaObj.env : null;
+    if (metaEnv) {
+      if (metaEnv[`VITE_${key}`]) return metaEnv[`VITE_${key}`];
+      if (metaEnv[`EXPO_PUBLIC_${key}`]) return metaEnv[`EXPO_PUBLIC_${key}`];
+    }
+  } catch {}
   return '';
 };
 
