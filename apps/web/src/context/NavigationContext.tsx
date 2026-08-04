@@ -28,7 +28,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       'notifications',
       'profile',
     ];
-    return validViews.includes(hash as ViewType) ? (hash as ViewType) : 'dashboard';
+    return validViews.includes(hash as ViewType) ? (hash as ViewType) : 'landing';
   });
 
   const navigate = (view: ViewType) => {

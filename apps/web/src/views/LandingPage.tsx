@@ -27,9 +27,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onSelectView,
 }) => {
   return (
-    <div className="min-h-full bg-gray-950 text-gray-100 font-sans selection:bg-indigo-500 selection:text-white pb-20">
+    <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-indigo-500 selection:text-white pb-20">
       {/* Background Subtle Gradient Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-indigo-600/15 via-purple-600/5 to-transparent blur-3xl pointer-events-none" />
+
+      {/* Landing Top Header */}
+      <header className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 p-0.5 shadow-md shadow-indigo-500/30 flex items-center justify-center">
+            <div className="w-full h-full bg-gray-950 rounded-[10px] flex items-center justify-center">
+              <Sparkles className="w-4.5 h-4.5 text-indigo-400" />
+            </div>
+          </div>
+          <span className="font-extrabold text-lg tracking-tight text-white">
+            Saarathi <span className="text-indigo-400 font-normal">OS</span>
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onOpenAuth('signin')}
+            className="px-4 py-2 text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 rounded-xl border border-white/10 transition-all"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => onOpenAuth('register')}
+            className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
+          >
+            Get Started Free
+          </button>
+        </div>
+      </header>
 
       {/* Hero Section */}
       <section className="relative pt-12 pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-center">

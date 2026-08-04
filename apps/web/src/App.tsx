@@ -35,7 +35,8 @@ function AppContent() {
   const { currentView, setCurrentView } = useNavigation();
 
   // Auth Store
-  const { userProfile, authModalMode, setAuthModalMode, updateUserProfile } = useAuthStore();
+  const { userProfile, authModalMode, setAuthModalMode, updateUserProfile, isAuthenticated, login, logout } =
+    useAuthStore();
 
   // Task Store
   const { tasks, addTask, toggleTaskComplete, postponeTask, updateTaskStatus, deleteTask } =
@@ -56,16 +57,40 @@ function AppContent() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const handleEnterWorkspace = () => {
+    if (!isAuthenticated) {
+      setAuthModalMode('signin');
+    } else {
+      setCurrentView('dashboard');
+    }
+  };
+
+  // 1. Landing Page Flow (Full Screen, Landing Header -> Auth Modal Popup -> Main Workspace)
+  if (currentView === 'landing') {
+    return (
+      <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-indigo-500 selection:text-white">
+        <LandingPage
+          onOpenAuth={(mode) => setAuthModalMode(mode)}
+          onEnterWorkspace={handleEnterWorkspace}
+          onSelectView={(v) => setCurrentView(v)}
+        />
+
+        {/* Auth Modal Popup */}
+        <AuthModal
+          mode={authModalMode}
+          onClose={() => setAuthModalMode(null)}
+          onSuccess={(updated) => {
+            login(updated);
+            setCurrentView('dashboard');
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 2. Main Workspace Layout (Navbar + Sidebar + Main App Page Views)
   const renderCurrentView = () => {
     switch (currentView) {
-      case 'landing':
-        return (
-          <LandingPage
-            onOpenAuth={(mode) => setAuthModalMode(mode)}
-            onEnterWorkspace={() => setCurrentView('dashboard')}
-            onSelectView={(v) => setCurrentView(v)}
-          />
-        );
       case 'dashboard':
         return (
           <DashboardView
@@ -201,9 +226,7 @@ function AppContent() {
         mode={authModalMode}
         onClose={() => setAuthModalMode(null)}
         onSuccess={(updated) => {
-          if (updated) {
-            updateUserProfile(updated);
-          }
+          login(updated);
           setCurrentView('dashboard');
         }}
       />
