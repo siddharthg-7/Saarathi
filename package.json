@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "npm run dev --workspace=saarathi-web",
+    "mobile": "npm run start --workspace=@saarathi/mobile",
+    "mobile:clear": "npm run start --workspace=@saarathi/mobile -- --clear",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",

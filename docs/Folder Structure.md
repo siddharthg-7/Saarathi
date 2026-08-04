@@ -53,9 +53,10 @@ saarathi/
 │   │   │   ├── training/                # Training scripts (scikit-learn / pandas)
 │   │   │   └── features.py              # Feature engineering pipeline
 │   │   ├── services/                    # Business logic & External integrations
-│   │   │   ├── deepgram_service.py      # Speech-to-text / Text-to-speech handler
-│   │   │   ├── groq_service.py          # Llama 3.3 LLM orchestration
-│   │   │   └── vector_service.py        # Sentence transformers & PGVector client
+│   │   │   ├── ai_service.py            # Groq, Gemini, and Deepgram AI client integrations
+│   │   │   ├── firestore_service.py     # Firebase Admin Firestore direct reads & writes
+│   │   │   ├── prompt_orchestration.py  # System and instruction prompts for LLM grounding
+│   │   │   └── tool_calling.py          # LLM structured JSON action execution
 │   │   ├── models.py                    # Pydantic data validation schemas
 │   │   └── main.py                      # FastAPI application entry point
 │   ├── Dockerfile                       # Container definition for deployment

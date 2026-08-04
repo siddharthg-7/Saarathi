@@ -23,6 +23,7 @@ This environment variable strategy defines how configuration secrets, API keys, 
 | **`VITE_FIREBASE_PROJECT_ID`** | Web (`apps/web`) | Firebase Project Identifier | `saarathi-os` |
 | **`VITE_API_BASE_URL`** | Web (`apps/web`) | FastAPI Backend Base URL | `[https://api.saarathi.os/v1](https://api.saarathi.os/v1)` |
 | **`GROQ_API_KEY`** | Backend (`backend/`) | Secret API key for Groq Llama 3.3 orchestration | `gsk_...` |
+| **`GEMINI_API_KEY`** | Backend (`backend/`) | Secret API key for rate-limited Gemini model planning | `AIzaSyB...` |
 | **`DEEPGRAM_API_KEY`** | Backend (`backend/`) | Secret API key for STT / TTS voice pipelines | `dg_...` |
 | **`SUPABASE_URL`** | Backend (`backend/`) | Supabase PGVector database instance URL | `[https://xyz.supabase.co](https://xyz.supabase.co)` |
 | **`SUPABASE_SERVICE_ROLE_KEY`** | Backend (`backend/`) | Supabase Secret Service Role Key for vector writes | `eyJhbG...` |
@@ -67,6 +68,7 @@ ENVIRONMENT=development
 
 # AI & Voice Providers
 GROQ_API_KEY=gsk_secret_groq_key_here
+GEMINI_API_KEY=your_gemini_key_here
 DEEPGRAM_API_KEY=dg_secret_deepgram_key_here
 
 # Vector Database (Supabase PGVector)
