@@ -8,6 +8,7 @@ import {
   Subtask,
   TaskFilterState,
   Project,
+  SyncStatus,
 } from '@saarathi/types';
 import {
   telemetryApi,
@@ -20,6 +21,7 @@ import {
   subscribeToProjects,
   createProjectDoc,
   deleteProjectDoc,
+  resolveConflict,
 } from '@saarathi/api';
 
 interface TaskState {
@@ -90,11 +92,63 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   initTaskListener: (uid: string) => {
     set({ activeUid: uid, isLoading: true });
-    const unsubscribeTasks = subscribeToTasks(uid, (firestoreTasks) => {
-      set({ tasks: firestoreTasks, isLoading: false });
+    const unsubscribeTasks = subscribeToTasks(uid, (firestoreTasks, metadata) => {
+      const currentTasks = get().tasks;
+      const hasPendingWrites = metadata?.hasPendingWrites ?? false;
+
+      const mergedMap = new Map<string, Task>();
+
+      firestoreTasks.forEach((remoteTask) => {
+        const localTask = currentTasks.find((t) => t.id === remoteTask.id);
+        if (localTask && localTask.syncStatus === 'pending') {
+          const merged = resolveConflict(localTask, remoteTask, 'field_merge');
+          mergedMap.set(merged.id, merged);
+        } else {
+          mergedMap.set(remoteTask.id, {
+            ...remoteTask,
+            syncStatus: (hasPendingWrites ? 'pending' : 'synced') as SyncStatus,
+          });
+        }
+      });
+
+      currentTasks.forEach((localTask) => {
+        if (localTask.syncStatus === 'pending' && !mergedMap.has(localTask.id)) {
+          mergedMap.set(localTask.id, localTask);
+        }
+      });
+
+      const mergedTasks = Array.from(mergedMap.values()).sort(
+        (a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)
+      );
+
+      set({ tasks: mergedTasks, isLoading: false });
     });
-    const unsubscribeProjects = subscribeToProjects(uid, (firestoreProjects) => {
-      set({ projects: firestoreProjects });
+
+    const unsubscribeProjects = subscribeToProjects(uid, (firestoreProjects, metadata) => {
+      const currentProjects = get().projects;
+      const hasPendingWrites = metadata?.hasPendingWrites ?? false;
+
+      const mergedMap = new Map<string, Project>();
+      firestoreProjects.forEach((remoteProj) => {
+        const localProj = currentProjects.find((p) => p.id === remoteProj.id);
+        if (localProj && localProj.syncStatus === 'pending') {
+          const merged = resolveConflict(localProj, remoteProj, 'field_merge');
+          mergedMap.set(merged.id, merged);
+        } else {
+          mergedMap.set(remoteProj.id, {
+            ...remoteProj,
+            syncStatus: (hasPendingWrites ? 'pending' : 'synced') as SyncStatus,
+          });
+        }
+      });
+
+      currentProjects.forEach((localProj) => {
+        if (localProj.syncStatus === 'pending' && !mergedMap.has(localProj.id)) {
+          mergedMap.set(localProj.id, localProj);
+        }
+      });
+
+      set({ projects: Array.from(mergedMap.values()) });
     });
 
     return () => {
@@ -165,6 +219,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       recurrence,
       orderIndex: nextOrderIndex,
       createdAt: new Date().toISOString(),
+      version: 1,
+      syncStatus: 'pending' as SyncStatus,
     };
 
     // Optimistic local update
@@ -187,8 +243,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     if (!targetTask) return;
 
     const nextStatus: TaskStatus = targetTask.status === 'completed' ? 'pending' : 'completed';
+    const currentVersion = targetTask.version || 1;
 
-    // Handle recurring task logic if completing
     let newRecurringTask: Task | null = null;
     if (nextStatus === 'completed' && targetTask.recurrence && targetTask.recurrence !== 'none') {
       const nextTaskId = `task_${Date.now()}`;
@@ -199,13 +255,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         postponeCount: 0,
         createdAt: new Date().toISOString(),
         orderIndex: Math.max(...tasks.map((t) => t.orderIndex || 0)) + 1,
+        version: 1,
+        syncStatus: 'pending' as SyncStatus,
       };
     }
 
     // Optimistic UI update
     set((state) => ({
       tasks: state.tasks
-        .map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t))
+        .map((t) =>
+          t.id === taskId
+            ? { ...t, status: nextStatus, version: currentVersion + 1, syncStatus: 'pending' as SyncStatus }
+            : t
+        )
         .concat(newRecurringTask ? [newRecurringTask] : []),
     }));
 
@@ -216,7 +278,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     if (activeUid) {
       try {
-        await updateTaskDoc(activeUid, taskId, { status: nextStatus });
+        await updateTaskDoc(activeUid, taskId, { status: nextStatus }, currentVersion);
         if (newRecurringTask) {
           await createTaskDoc(activeUid, newRecurringTask);
         }
@@ -231,6 +293,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const targetTask = tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
 
+    const currentVersion = targetTask.version || 1;
     const nextPostponeCount = targetTask.postponeCount + 1;
     const prediction = await mlApi.predictTaskRisk({
       ...targetTask,
@@ -243,6 +306,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       delayProbability: prediction.delayProbability,
       status: 'skipped',
       scheduledTime: 'Tomorrow 07:00 AM',
+      version: currentVersion + 1,
+      syncStatus: 'pending' as SyncStatus,
     };
 
     // Optimistic update
@@ -258,7 +323,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     if (activeUid) {
       try {
-        await updateTaskDoc(activeUid, taskId, updates);
+        await updateTaskDoc(activeUid, taskId, updates, currentVersion);
       } catch (err) {
         console.error('Failed to postpone task in Firestore:', err);
       }
@@ -266,22 +331,36 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   updateTaskStatus: async (taskId, status) => {
-    const { activeUid } = get();
+    const { tasks, activeUid } = get();
+    const targetTask = tasks.find((t) => t.id === taskId);
+    const currentVersion = targetTask?.version || 1;
+
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)),
+      tasks: state.tasks.map((t) =>
+        t.id === taskId
+          ? { ...t, status, version: currentVersion + 1, syncStatus: 'pending' as SyncStatus }
+          : t
+      ),
     }));
     if (activeUid) {
-      await updateTaskDoc(activeUid, taskId, { status }).catch(() => {});
+      await updateTaskDoc(activeUid, taskId, { status }, currentVersion).catch(() => {});
     }
   },
 
   updateTask: async (taskId, updates) => {
-    const { activeUid } = get();
+    const { tasks, activeUid } = get();
+    const targetTask = tasks.find((t) => t.id === taskId);
+    const currentVersion = targetTask?.version || 1;
+
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)),
+      tasks: state.tasks.map((t) =>
+        t.id === taskId
+          ? { ...t, ...updates, version: currentVersion + 1, syncStatus: 'pending' as SyncStatus }
+          : t
+      ),
     }));
     if (activeUid) {
-      await updateTaskDoc(activeUid, taskId, updates).catch(() => {});
+      await updateTaskDoc(activeUid, taskId, updates, currentVersion).catch(() => {});
     }
   },
 
@@ -302,6 +381,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const targetTask = tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
 
+    const currentVersion = targetTask.version || 1;
     const newSubtask: Subtask = {
       id: `sub_${Date.now()}`,
       title,
@@ -310,11 +390,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const updatedSubtasks = [...targetTask.subtasks, newSubtask];
 
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, subtasks: updatedSubtasks } : t)),
+      tasks: state.tasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              subtasks: updatedSubtasks,
+              version: currentVersion + 1,
+              syncStatus: 'pending',
+            }
+          : t
+      ),
     }));
 
     if (activeUid) {
-      await updateTaskDoc(activeUid, taskId, { subtasks: updatedSubtasks }).catch(() => {});
+      await updateTaskDoc(
+        activeUid,
+        taskId,
+        { subtasks: updatedSubtasks },
+        currentVersion
+      ).catch(() => {});
     }
   },
 
@@ -323,16 +417,31 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const targetTask = tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
 
+    const currentVersion = targetTask.version || 1;
     const updatedSubtasks = targetTask.subtasks.map((st) =>
       st.id === subtaskId ? { ...st, completed: !st.completed } : st
     );
 
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, subtasks: updatedSubtasks } : t)),
+      tasks: state.tasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              subtasks: updatedSubtasks,
+              version: currentVersion + 1,
+              syncStatus: 'pending',
+            }
+          : t
+      ),
     }));
 
     if (activeUid) {
-      await updateTaskDoc(activeUid, taskId, { subtasks: updatedSubtasks }).catch(() => {});
+      await updateTaskDoc(
+        activeUid,
+        taskId,
+        { subtasks: updatedSubtasks },
+        currentVersion
+      ).catch(() => {});
     }
   },
 
@@ -341,20 +450,40 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const targetTask = tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
 
+    const currentVersion = targetTask.version || 1;
     const updatedSubtasks = targetTask.subtasks.filter((st) => st.id !== subtaskId);
 
     set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, subtasks: updatedSubtasks } : t)),
+      tasks: state.tasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              subtasks: updatedSubtasks,
+              version: currentVersion + 1,
+              syncStatus: 'pending',
+            }
+          : t
+      ),
     }));
 
     if (activeUid) {
-      await updateTaskDoc(activeUid, taskId, { subtasks: updatedSubtasks }).catch(() => {});
+      await updateTaskDoc(
+        activeUid,
+        taskId,
+        { subtasks: updatedSubtasks },
+        currentVersion
+      ).catch(() => {});
     }
   },
 
   reorderTasks: async (reorderedTasks) => {
     const { activeUid } = get();
-    const indexed = reorderedTasks.map((t, idx) => ({ ...t, orderIndex: idx }));
+    const indexed = reorderedTasks.map((t, idx) => ({
+      ...t,
+      orderIndex: idx,
+      version: (t.version || 1) + 1,
+      syncStatus: 'pending' as const,
+    }));
     set({ tasks: indexed });
 
     if (activeUid) {
@@ -374,6 +503,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       color,
       description: description || '',
       createdAt: new Date().toISOString(),
+      version: 1,
+      syncStatus: 'pending',
     };
     set((state) => ({ projects: [...state.projects, newProject] }));
 

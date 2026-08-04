@@ -2,8 +2,6 @@ import {
   collection,
   doc,
   setDoc,
-  getDoc,
-  updateDoc,
   deleteDoc,
   onSnapshot,
   query,
@@ -11,21 +9,29 @@ import {
   serverTimestamp,
   writeBatch,
   Unsubscribe,
+  increment,
+  updateDoc,
+  SnapshotMetadata,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Task, Project, Goal } from '@saarathi/types';
+import { executeVersionedTransaction } from './syncService';
 
 // ================= TASKS =================
 
-export function subscribeToTasks(uid: string, callback: (tasks: Task[]) => void): Unsubscribe {
+export function subscribeToTasks(
+  uid: string,
+  callback: (tasks: Task[], metadata?: SnapshotMetadata) => void
+): Unsubscribe {
   const tasksRef = collection(db, 'users', uid, 'tasks');
   const q = query(tasksRef, orderBy('orderIndex', 'asc'));
   return onSnapshot(q, (snapshot) => {
     const tasks: Task[] = snapshot.docs.map((d) => ({
       ...(d.data() as Task),
       id: d.id,
+      syncStatus: snapshot.metadata.hasPendingWrites ? 'pending' : 'synced',
     }));
-    callback(tasks);
+    callback(tasks, snapshot.metadata);
   });
 }
 
@@ -34,6 +40,7 @@ export async function createTaskDoc(uid: string, task: Task): Promise<void> {
   await setDoc(taskRef, {
     ...task,
     uid,
+    version: task.version || 1,
     createdAt: task.createdAt || new Date().toISOString(),
     updatedAt: serverTimestamp(),
   });
@@ -42,13 +49,20 @@ export async function createTaskDoc(uid: string, task: Task): Promise<void> {
 export async function updateTaskDoc(
   uid: string,
   taskId: string,
-  updates: Partial<Task>
+  updates: Partial<Task>,
+  expectedBaseVersion?: number
 ): Promise<void> {
   const taskRef = doc(db, 'users', uid, 'tasks', taskId);
-  await updateDoc(taskRef, {
-    ...updates,
-    updatedAt: serverTimestamp(),
-  });
+  
+  if (expectedBaseVersion !== undefined) {
+    await executeVersionedTransaction(taskRef, updates, expectedBaseVersion);
+  } else {
+    await updateDoc(taskRef, {
+      ...updates,
+      version: increment(1),
+      updatedAt: serverTimestamp(),
+    });
+  }
 }
 
 export async function deleteTaskDoc(uid: string, taskId: string): Promise<void> {
@@ -63,7 +77,11 @@ export async function reorderTasksBatch(
   const batch = writeBatch(db);
   orderedTasks.forEach(({ id, orderIndex }) => {
     const taskRef = doc(db, 'users', uid, 'tasks', id);
-    batch.update(taskRef, { orderIndex, updatedAt: serverTimestamp() });
+    batch.update(taskRef, {
+      orderIndex,
+      version: increment(1),
+      updatedAt: serverTimestamp(),
+    });
   });
   await batch.commit();
 }
@@ -72,15 +90,16 @@ export async function reorderTasksBatch(
 
 export function subscribeToProjects(
   uid: string,
-  callback: (projects: Project[]) => void
+  callback: (projects: Project[], metadata?: SnapshotMetadata) => void
 ): Unsubscribe {
   const projectsRef = collection(db, 'users', uid, 'projects');
   return onSnapshot(projectsRef, (snapshot) => {
     const projects: Project[] = snapshot.docs.map((d) => ({
       ...(d.data() as Project),
       id: d.id,
+      syncStatus: snapshot.metadata.hasPendingWrites ? 'pending' : 'synced',
     }));
-    callback(projects);
+    callback(projects, snapshot.metadata);
   });
 }
 
@@ -89,6 +108,7 @@ export async function createProjectDoc(uid: string, project: Project): Promise<v
   await setDoc(projectRef, {
     ...project,
     uid,
+    version: project.version || 1,
     createdAt: project.createdAt || new Date().toISOString(),
     updatedAt: serverTimestamp(),
   });
@@ -101,14 +121,18 @@ export async function deleteProjectDoc(uid: string, projectId: string): Promise<
 
 // ================= GOALS =================
 
-export function subscribeToGoals(uid: string, callback: (goals: Goal[]) => void): Unsubscribe {
+export function subscribeToGoals(
+  uid: string,
+  callback: (goals: Goal[], metadata?: SnapshotMetadata) => void
+): Unsubscribe {
   const goalsRef = collection(db, 'users', uid, 'goals');
   return onSnapshot(goalsRef, (snapshot) => {
     const goals: Goal[] = snapshot.docs.map((d) => ({
       ...(d.data() as Goal),
       id: d.id,
+      syncStatus: snapshot.metadata.hasPendingWrites ? 'pending' : 'synced',
     }));
-    callback(goals);
+    callback(goals, snapshot.metadata);
   });
 }
 
@@ -117,7 +141,9 @@ export async function createGoalDoc(uid: string, goal: Goal): Promise<void> {
   await setDoc(goalRef, {
     ...goal,
     uid,
+    version: goal.version || 1,
     createdAt: goal.createdAt || new Date().toISOString(),
     updatedAt: serverTimestamp(),
   });
 }
+

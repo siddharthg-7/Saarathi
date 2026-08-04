@@ -11,6 +11,16 @@ export interface Subtask {
   completed: boolean;
 }
 
+export type SyncStatus = 'synced' | 'pending' | 'conflict';
+
+export type ConflictResolutionStrategy = 'field_merge' | 'server_wins' | 'client_wins';
+
+export interface SyncMetadata {
+  hasPendingWrites: boolean;
+  fromCache: boolean;
+  lastSyncedAt?: string;
+}
+
 export interface Task {
   id: string;
   uid?: string;
@@ -39,6 +49,8 @@ export interface Task {
   orderIndex?: number;
   createdAt: string;
   updatedAt?: string;
+  version?: number;
+  syncStatus?: SyncStatus;
 }
 
 export interface Project {
@@ -50,10 +62,13 @@ export interface Project {
   icon?: string;
   createdAt: string;
   updatedAt?: string;
+  version?: number;
+  syncStatus?: SyncStatus;
 }
 
 export interface Habit {
   id: string;
+  uid?: string;
   title: string;
   category: string;
   streakCount: number;
@@ -62,6 +77,10 @@ export interface Habit {
   activeDays: boolean[];
   targetDaysPerWeek: number;
   color: string;
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
+  syncStatus?: SyncStatus;
 }
 
 export interface Milestone {
@@ -85,6 +104,8 @@ export interface Goal {
   projectId?: string;
   createdAt?: string;
   updatedAt?: string;
+  version?: number;
+  syncStatus?: SyncStatus;
 }
 
 export interface TaskFilterState {
