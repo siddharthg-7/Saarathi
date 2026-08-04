@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, ml, brain_dump, kairo
+from app.api import auth, ml, brain_dump, kairo, telemetry
 
 app = FastAPI(
     title="Saarathi OS AI Backend Gateway",
@@ -20,6 +20,7 @@ app.include_router(auth.router)
 app.include_router(ml.router)
 app.include_router(brain_dump.router)
 app.include_router(kairo.router)
+app.include_router(telemetry.router)
 
 @app.get("/")
 async def root():
