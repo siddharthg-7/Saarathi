@@ -1,0 +1,35 @@
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+const getEnvVar = (key: string): string => {
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env[`EXPO_PUBLIC_${key}`]) return process.env[`EXPO_PUBLIC_${key}`] as string;
+    if (process.env[`VITE_${key}`]) return process.env[`VITE_${key}`] as string;
+    if (process.env[key]) return process.env[key] as string;
+  }
+  const metaEnv = (import.meta as unknown as { env?: Record<string, string> }).env;
+  if (metaEnv) {
+    if (metaEnv[`VITE_${key}`]) return metaEnv[`VITE_${key}`];
+    if (metaEnv[`EXPO_PUBLIC_${key}`]) return metaEnv[`EXPO_PUBLIC_${key}`];
+  }
+  return '';
+};
+
+const firebaseConfig = {
+  apiKey: getEnvVar('FIREBASE_API_KEY'),
+  authDomain: getEnvVar('FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnvVar('FIREBASE_PROJECT_ID'),
+  storageBucket: getEnvVar('FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnvVar('FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnvVar('FIREBASE_APP_ID'),
+  measurementId: getEnvVar('FIREBASE_MEASUREMENT_ID'),
+};
+
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+export { app, auth, db, storage };

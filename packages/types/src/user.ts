@@ -16,6 +16,40 @@ export interface UserProfile {
   theme: 'dark' | 'glass-midnight';
 }
 
+export interface UserSettings {
+  uid: string;
+  theme: 'dark' | 'light' | 'glass-midnight';
+  timezone: string;
+  notificationsEnabled: boolean;
+  workingHoursStart: string;
+  workingHoursEnd: string;
+  defaultPomodoroDuration: number;
+  autoRescheduleHighRisk: boolean;
+  syncSettings: boolean;
+  updatedAt?: string;
+}
+
+export interface UserDevice {
+  id: string;
+  uid: string;
+  deviceId: string;
+  deviceModel: string;
+  os: 'ios' | 'android' | 'web' | 'windows' | 'macos';
+  fcmToken?: string;
+  lastActiveAt: string;
+  createdAt: string;
+}
+
+export interface UserSession {
+  id: string;
+  uid: string;
+  startedAt: string;
+  lastPingAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+  active: boolean;
+}
+
 export interface NotificationItem {
   id: string;
   title: string;
@@ -25,3 +59,4 @@ export interface NotificationItem {
   read: boolean;
   actionText?: string;
 }
+

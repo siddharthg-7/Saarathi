@@ -2,3 +2,8 @@ export * from './client';
 export * from './kairoApi';
 export * from './mlApi';
 export * from './telemetryApi';
+export * from './firebase';
+export * from './authService';
+export * from './firestoreService';
+export * from './storageService';
+export * from './taskFirestoreService';
