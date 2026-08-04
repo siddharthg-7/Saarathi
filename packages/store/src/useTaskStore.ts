@@ -52,7 +52,7 @@ interface TaskState {
     category?: string,
     energyRequired?: EnergyLevel
   ) => Promise<void>;
-  
+
   toggleTaskComplete: (taskId: string) => Promise<void>;
   postponeTask: (taskId: string) => Promise<void>;
   updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;

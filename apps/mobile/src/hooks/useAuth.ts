@@ -119,7 +119,11 @@ export function useAuth() {
     setLoading(true);
     try {
       const user = await signInWithGoogleCredential(idToken, accessToken);
-      await createUserProfileDoc({ id: user.uid, email: user.email || '', name: user.displayName || '' });
+      await createUserProfileDoc({
+        id: user.uid,
+        email: user.email || '',
+        name: user.displayName || '',
+      });
       await createUserSettingsDoc(user.uid);
       return user;
     } finally {

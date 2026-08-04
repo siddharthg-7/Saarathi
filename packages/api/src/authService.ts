@@ -13,7 +13,11 @@ import { auth } from './firebase';
 
 export type { User };
 
-export async function signUpWithEmail(email: string, pass: string, displayName?: string): Promise<User> {
+export async function signUpWithEmail(
+  email: string,
+  pass: string,
+  displayName?: string
+): Promise<User> {
   const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
   if (displayName && userCredential.user) {
     await updateProfile(userCredential.user, { displayName });
@@ -26,7 +30,10 @@ export async function signInWithEmail(email: string, pass: string): Promise<User
   return userCredential.user;
 }
 
-export async function signInWithGoogleCredential(idToken: string, accessToken?: string): Promise<User> {
+export async function signInWithGoogleCredential(
+  idToken: string,
+  accessToken?: string
+): Promise<User> {
   const credential = GoogleAuthProvider.credential(idToken, accessToken);
   const userCredential = await signInWithCredential(auth, credential);
   return userCredential.user;

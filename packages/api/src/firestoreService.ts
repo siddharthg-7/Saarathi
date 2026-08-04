@@ -14,7 +14,9 @@ import { UserProfile, UserSettings, UserDevice, UserSession } from '@saarathi/ty
 
 // ================= USER PROFILE =================
 
-export async function createUserProfileDoc(profile: Partial<UserProfile> & { id: string }): Promise<void> {
+export async function createUserProfileDoc(
+  profile: Partial<UserProfile> & { id: string }
+): Promise<void> {
   const userRef = doc(db, 'users', profile.id);
   const data = {
     uid: profile.id,
@@ -36,12 +38,18 @@ export async function getUserProfileDoc(uid: string): Promise<Partial<UserProfil
   return snap.data() as Partial<UserProfile>;
 }
 
-export async function updateUserProfileDoc(uid: string, updates: Partial<UserProfile>): Promise<void> {
+export async function updateUserProfileDoc(
+  uid: string,
+  updates: Partial<UserProfile>
+): Promise<void> {
   const userRef = doc(db, 'users', uid);
   await updateDoc(userRef, { ...updates, updatedAt: serverTimestamp() });
 }
 
-export function subscribeToUserProfile(uid: string, callback: (profile: Partial<UserProfile> | null) => void): Unsubscribe {
+export function subscribeToUserProfile(
+  uid: string,
+  callback: (profile: Partial<UserProfile> | null) => void
+): Unsubscribe {
   const userRef = doc(db, 'users', uid);
   return onSnapshot(userRef, (snap) => {
     if (snap.exists()) {
@@ -65,7 +73,10 @@ export const DEFAULT_USER_SETTINGS: Omit<UserSettings, 'uid'> = {
   syncSettings: true,
 };
 
-export async function createUserSettingsDoc(uid: string, settings?: Partial<UserSettings>): Promise<UserSettings> {
+export async function createUserSettingsDoc(
+  uid: string,
+  settings?: Partial<UserSettings>
+): Promise<UserSettings> {
   const settingsRef = doc(db, 'settings', uid);
   const fullSettings: UserSettings = {
     uid,
@@ -84,7 +95,10 @@ export async function getUserSettingsDoc(uid: string): Promise<UserSettings | nu
   return snap.data() as UserSettings;
 }
 
-export async function updateUserSettingsDoc(uid: string, updates: Partial<UserSettings>): Promise<void> {
+export async function updateUserSettingsDoc(
+  uid: string,
+  updates: Partial<UserSettings>
+): Promise<void> {
   const settingsRef = doc(db, 'settings', uid);
   await updateDoc(settingsRef, {
     ...updates,
@@ -92,7 +106,10 @@ export async function updateUserSettingsDoc(uid: string, updates: Partial<UserSe
   });
 }
 
-export function subscribeToUserSettings(uid: string, callback: (settings: UserSettings | null) => void): Unsubscribe {
+export function subscribeToUserSettings(
+  uid: string,
+  callback: (settings: UserSettings | null) => void
+): Unsubscribe {
   const settingsRef = doc(db, 'settings', uid);
   return onSnapshot(settingsRef, (snap) => {
     if (snap.exists()) {
@@ -105,7 +122,10 @@ export function subscribeToUserSettings(uid: string, callback: (settings: UserSe
 
 // ================= USER DEVICES =================
 
-export async function registerUserDevice(uid: string, device: Omit<UserDevice, 'id' | 'uid' | 'createdAt' | 'lastActiveAt'>): Promise<UserDevice> {
+export async function registerUserDevice(
+  uid: string,
+  device: Omit<UserDevice, 'id' | 'uid' | 'createdAt' | 'lastActiveAt'>
+): Promise<UserDevice> {
   const deviceRef = doc(collection(db, 'devices', uid, 'user_devices'), device.deviceId);
   const deviceData: UserDevice = {
     id: device.deviceId,
@@ -125,7 +145,10 @@ export async function updateDeviceLastActive(uid: string, deviceId: string): Pro
 
 // ================= USER SESSIONS =================
 
-export async function createSessionDoc(uid: string, sessionInfo?: Partial<UserSession>): Promise<UserSession> {
+export async function createSessionDoc(
+  uid: string,
+  sessionInfo?: Partial<UserSession>
+): Promise<UserSession> {
   const sessionRef = doc(collection(db, 'sessions', uid, 'user_sessions'));
   const sessionData: UserSession = {
     id: sessionRef.id,
@@ -133,7 +156,9 @@ export async function createSessionDoc(uid: string, sessionInfo?: Partial<UserSe
     startedAt: new Date().toISOString(),
     lastPingAt: new Date().toISOString(),
     ipAddress: sessionInfo?.ipAddress || '',
-    userAgent: sessionInfo?.userAgent || (typeof navigator !== 'undefined' ? navigator.userAgent : 'Mobile App'),
+    userAgent:
+      sessionInfo?.userAgent ||
+      (typeof navigator !== 'undefined' ? navigator.userAgent : 'Mobile App'),
     active: true,
   };
   await setDoc(sessionRef, sessionData);

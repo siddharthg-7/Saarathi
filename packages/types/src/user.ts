@@ -59,4 +59,3 @@ export interface NotificationItem {
   read: boolean;
   actionText?: string;
 }
-

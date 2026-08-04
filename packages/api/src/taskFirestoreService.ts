@@ -39,7 +39,11 @@ export async function createTaskDoc(uid: string, task: Task): Promise<void> {
   });
 }
 
-export async function updateTaskDoc(uid: string, taskId: string, updates: Partial<Task>): Promise<void> {
+export async function updateTaskDoc(
+  uid: string,
+  taskId: string,
+  updates: Partial<Task>
+): Promise<void> {
   const taskRef = doc(db, 'users', uid, 'tasks', taskId);
   await updateDoc(taskRef, {
     ...updates,
@@ -52,7 +56,10 @@ export async function deleteTaskDoc(uid: string, taskId: string): Promise<void> 
   await deleteDoc(taskRef);
 }
 
-export async function reorderTasksBatch(uid: string, orderedTasks: { id: string; orderIndex: number }[]): Promise<void> {
+export async function reorderTasksBatch(
+  uid: string,
+  orderedTasks: { id: string; orderIndex: number }[]
+): Promise<void> {
   const batch = writeBatch(db);
   orderedTasks.forEach(({ id, orderIndex }) => {
     const taskRef = doc(db, 'users', uid, 'tasks', id);
@@ -63,7 +70,10 @@ export async function reorderTasksBatch(uid: string, orderedTasks: { id: string;
 
 // ================= PROJECTS =================
 
-export function subscribeToProjects(uid: string, callback: (projects: Project[]) => void): Unsubscribe {
+export function subscribeToProjects(
+  uid: string,
+  callback: (projects: Project[]) => void
+): Unsubscribe {
   const projectsRef = collection(db, 'users', uid, 'projects');
   return onSnapshot(projectsRef, (snapshot) => {
     const projects: Project[] = snapshot.docs.map((d) => ({
