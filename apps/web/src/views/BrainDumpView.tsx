@@ -12,6 +12,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Task, EnergyLevel } from '@saarathi/types';
+import { auth } from '@saarathi/api';
+import { env } from '@/config/env';
 
 interface BrainDumpViewProps {
   onAddTask: (title: string, category: string, energy: EnergyLevel) => void;
@@ -59,24 +61,37 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
 
   const processAudioRecording = async () => {
     setIsProcessing(true);
+    setTranscript('');
+    setExtractedTasks([]);
+
     const mockTranscript =
       'I need to revise DBMS relational indexing for my exam, complete the full-stack API integration for Saarathi OS before 8 PM, go for a 45-minute gym session, and call my mother.';
 
     setTranscript(mockTranscript);
 
+    let token = '';
     try {
-      const response = await fetch('/api/kairo/brain-dump', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: mockTranscript }),
-      });
-      const data = await response.json();
-      if (data && data.tasks) {
-        setExtractedTasks(data.tasks);
+      token = (await auth.currentUser?.getIdToken()) || '';
+    } catch (e) {
+      console.warn('Failed to retrieve Firebase ID token:', e);
+    }
+
+    const getWsUrl = () => {
+      const baseUrl = env.apiBaseUrl;
+      let wsUrl = baseUrl.replace(/^http/, 'ws');
+      if (wsUrl.startsWith('/')) {
+        const loc = typeof window !== 'undefined' ? window.location : { host: 'localhost', protocol: 'http:' };
+        const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${proto}//${loc.host}${wsUrl}`;
       }
-    } catch (err) {
-      console.error('Brain dump processing error:', err);
-      // Fallback preview
+      return `${wsUrl}/brain-dump/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    };
+
+    const wsUrl = getWsUrl();
+    let hasReceivedTask = false;
+
+    const fallbackResponse = () => {
+      if (hasReceivedTask) return;
       setExtractedTasks([
         {
           title: 'Revise DBMS Relational Indexing',
@@ -100,17 +115,48 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
           aiSummary: 'Family checkin call.',
         },
       ]);
-    } finally {
       setIsProcessing(false);
-    }
-  };
+    };
 
-  const handleAddAllToWorkspace = () => {
-    extractedTasks.forEach((t) => {
-      onAddTask(t.title, t.category, t.energyRequired);
-    });
-    setExtractedTasks([]);
-    setTranscript('');
+    try {
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            transcript: mockTranscript,
+          })
+        );
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.status === 'task_extracted') {
+            hasReceivedTask = true;
+            setExtractedTasks((prev) => [...prev, data.task]);
+          } else if (data.status === 'done') {
+            setIsProcessing(false);
+            ws.close();
+          }
+        } catch (e) {
+          console.error('Error parsing brain dump ws message:', e);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error('Brain dump WebSocket error:', err);
+        fallbackResponse();
+      };
+
+      ws.onclose = () => {
+        setIsProcessing(false);
+        fallbackResponse();
+      };
+    } catch (err) {
+      console.error('Error starting brain dump WebSocket:', err);
+      fallbackResponse();
+    }
   };
 
   const formatTimer = (seconds: number) => {
@@ -191,47 +237,63 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
         <div className="p-6 rounded-2xl bg-gray-900/80 border border-indigo-500/30 text-center space-y-3">
           <Sparkles className="w-6 h-6 text-indigo-400 animate-spin mx-auto" />
           <div className="font-bold text-xs text-white">
-            Deepgram STT & Gemini Llama Parsing in Progress...
+            Kairo is organizing your thoughts...
           </div>
           <p className="text-[11px] text-gray-400">
-            Extracting tasks, energy levels, categories, and deadlines.
+            Extracting tasks, energy levels, categories, and scheduling them in real-time.
           </p>
         </div>
       )}
 
       {/* Transcript & Extracted Tasks Preview */}
-      {transcript && !isProcessing && (
+      {(transcript || extractedTasks.length > 0) && (
         <div className="space-y-4 animate-in fade-in duration-200">
           {/* Transcript Box */}
-          <div className="p-4 rounded-2xl bg-gray-950 border border-white/10 text-xs space-y-1">
-            <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
-              Raw Transcribed Audio
-            </span>
-            <p className="text-gray-300 italic">"{transcript}"</p>
-          </div>
+          {transcript && (
+            <div className="p-4 rounded-2xl bg-gray-950 border border-white/10 text-xs space-y-1">
+              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
+                Raw Transcribed Audio
+              </span>
+              <p className="text-gray-300 italic">"{transcript}"</p>
+            </div>
+          )}
 
           {/* Extracted Task Cards */}
           <div className="p-6 rounded-3xl bg-gray-900/80 border border-white/10 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-white flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-indigo-400" />
-                <span>Extracted Tasks Preview ({extractedTasks.length})</span>
+                <span>Extracted Tasks ({extractedTasks.length})</span>
               </h3>
 
-              <button
-                onClick={handleAddAllToWorkspace}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Add All to Saarathi Workspace</span>
-              </button>
+              {isProcessing ? (
+                <span className="text-[10px] text-indigo-400 animate-pulse font-medium">
+                  Streaming from Kairo...
+                </span>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-xs font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Auto-saved to Saarathi Workspace</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setExtractedTasks([]);
+                      setTranscript('');
+                    }}
+                    className="px-3.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-semibold rounded-xl border border-white/10 transition-colors"
+                  >
+                    Clear Preview
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
               {extractedTasks.map((task, idx) => (
                 <div
                   key={idx}
-                  className="p-4 rounded-2xl bg-gray-950 border border-white/10 flex items-center justify-between gap-4"
+                  className="p-4 rounded-2xl bg-gray-950 border border-white/10 flex items-center justify-between gap-4 animate-in slide-in-from-bottom-2 duration-200"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">

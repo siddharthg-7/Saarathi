@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { KairoMessage } from '@saarathi/types';
 import { initialKairoChatHistory } from '@/data/initialData';
-import { kairoApi } from '@saarathi/api';
+import { kairoApi, auth } from '@saarathi/api';
+import { env } from '@/config/env';
 
 interface KairoState {
   chatHistory: KairoMessage[];
@@ -22,44 +23,124 @@ export const useKairoStore = create<KairoState>((set) => ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
+    const assistantMsgId = `msg_ai_${Date.now()}`;
+    const assistantMsgObj: KairoMessage = {
+      id: assistantMsgId,
+      role: 'assistant',
+      message: '',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      source: 'kairo-stream-engine',
+    };
+
     set((state) => ({
-      chatHistory: [...state.chatHistory, userMsgObj],
+      chatHistory: [...state.chatHistory, userMsgObj, assistantMsgObj],
       isThinking: true,
     }));
 
+    let token = '';
     try {
-      const response = await kairoApi.sendMessage(userMessage, context);
+      token = (await auth.currentUser?.getIdToken()) || '';
+    } catch (e) {
+      console.warn('Failed to retrieve Firebase ID token:', e);
+    }
 
-      const assistantMsgObj: KairoMessage = {
-        id: `msg_ai_${Date.now()}`,
-        role: 'assistant',
-        message: response.message,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        source: response.source,
-        suggestedActions: response.suggestedActions?.map((a) => ({
-          ...a,
-          label: a.actionType.replace('_', ' '),
-        })),
+    // Convert API base URL to WebSocket URL
+    const getWsUrl = () => {
+      const baseUrl = env.apiBaseUrl; // e.g. "http://localhost:8000/v1"
+      let wsUrl = baseUrl.replace(/^http/, 'ws');
+      if (wsUrl.startsWith('/')) {
+        const loc = typeof window !== 'undefined' ? window.location : { host: 'localhost', protocol: 'http:' };
+        const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${proto}//${loc.host}${wsUrl}`;
+      }
+      return `${wsUrl}/kairo/chat/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    };
+
+    const wsUrl = getWsUrl();
+    let accumulatedContent = '';
+    let hasReceivedChunk = false;
+
+    const fallbackResponse = () => {
+      if (hasReceivedChunk) return;
+      set((state) => {
+        const history = [...state.chatHistory];
+        const lastMsg = history[history.length - 1];
+        if (lastMsg && lastMsg.id === assistantMsgId) {
+          lastMsg.message = `I've analyzed your request: "${userMessage}". Based on your schedule and peak energy window (09:30 AM - 11:30 AM), I recommend completing high-priority coding tasks first to build momentum.`;
+          lastMsg.source = 'kairo-local-engine';
+        }
+        return {
+          chatHistory: history,
+          isThinking: false,
+        };
+      });
+    };
+
+    try {
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            message: userMessage,
+            clientContext: context,
+          })
+        );
       };
 
-      set((state) => ({
-        chatHistory: [...state.chatHistory, assistantMsgObj],
-        isThinking: false,
-      }));
-    } catch {
-      set((state) => ({
-        isThinking: false,
-        chatHistory: [
-          ...state.chatHistory,
-          {
-            id: `msg_ai_${Date.now()}`,
-            role: 'assistant',
-            message: `I've analyzed your schedule and active workload. I recommend focusing on high-impact tasks during your peak morning window.`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            source: 'kairo-local-engine',
-          },
-        ],
-      }));
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'content') {
+            hasReceivedChunk = true;
+            accumulatedContent += data.delta;
+            set((state) => {
+              const history = [...state.chatHistory];
+              const lastMsg = history[history.length - 1];
+              if (lastMsg && lastMsg.id === assistantMsgId) {
+                lastMsg.message = accumulatedContent;
+              }
+              return { chatHistory: history };
+            });
+          } else if (data.type === 'done') {
+            set((state) => {
+              const history = [...state.chatHistory];
+              const lastMsg = history[history.length - 1];
+              if (lastMsg && lastMsg.id === assistantMsgId) {
+                lastMsg.message = data.message || accumulatedContent;
+                lastMsg.timestamp = new Date(data.timestamp).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                lastMsg.suggestedActions = data.suggestedActions?.map((a: any) => ({
+                  ...a,
+                  label: a.actionType.replace('_', ' '),
+                }));
+              }
+              return {
+                chatHistory: history,
+                isThinking: false,
+              };
+            });
+            ws.close();
+          }
+        } catch (e) {
+          console.error('Error parsing WebSocket message:', e);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket connection error:', err);
+        fallbackResponse();
+      };
+
+      ws.onclose = () => {
+        set({ isThinking: false });
+        fallbackResponse();
+      };
+    } catch (err) {
+      console.error('Error establishing WebSocket:', err);
+      fallbackResponse();
     }
   },
 

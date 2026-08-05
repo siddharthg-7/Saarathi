@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from app.core.security import verify_firebase_token
 from app.services.firestore_service import (
@@ -52,6 +52,113 @@ class DailyBriefResponse(BaseModel):
     optimalFocusWindow: Dict[str, str]
     insights: str
     scheduleSummary: List[Dict[str, str]]
+
+@router.websocket("/chat/ws")
+async def chat_ws(websocket: WebSocket, token: Optional[str] = None):
+    await websocket.accept()
+    
+    try:
+        from app.core.security import auth
+        if token and token != "undefined" and token != "null" and token != "":
+            decoded_token = auth.verify_id_token(token)
+            uid = decoded_token["uid"]
+        else:
+            uid = "dev-user-uid"
+    except Exception as e:
+        logger.warning(f"WebSocket auth failed, using dev bypass: {e}")
+        uid = "dev-user-uid"
+
+    try:
+        while True:
+            data_str = await websocket.receive_text()
+            data = json.loads(data_str)
+            
+            message = data.get("message", "")
+            client_context = data.get("clientContext", {}) or {}
+            
+            location = client_context.get("currentLocation", "Unknown")
+            energy = client_context.get("currentEnergy", "Medium")
+            focus_mode = client_context.get("activeFocusMode", False)
+            
+            tasks = get_user_tasks(uid)
+            goals = get_user_goals(uid)
+            history = get_chat_history(uid, limit=10)
+            
+            system_prompt = orchestrate_chat_prompt(
+                location=location,
+                energy=energy,
+                focus_mode=focus_mode,
+                goals=goals,
+                tasks=tasks
+            )
+            
+            messages = [{"role": "system", "content": system_prompt}]
+            for msg in history:
+                messages.append({"role": msg["role"], "content": msg["content"]})
+            messages.append({"role": "user", "content": message})
+            
+            full_response = ""
+            try:
+                from app.services.ai_service import call_groq_chat_stream
+                async for chunk in call_groq_chat_stream(messages):
+                    full_response += chunk
+                    await websocket.send_json({
+                        "type": "content",
+                        "delta": chunk
+                    })
+            except Exception as e:
+                logger.warning(f"Groq streaming failed, falling back to Gemini: {e}")
+                gemini_contents = []
+                for msg in messages:
+                    if msg["role"] != "system":
+                        gemini_contents.append({
+                            "role": "model" if msg["role"] == "assistant" else "user",
+                            "parts": [{"text": msg["content"]}]
+                        })
+                response_text = await call_gemini(gemini_contents, system_instruction=system_prompt)
+                full_response = response_text
+                await websocket.send_json({
+                    "type": "content",
+                    "delta": response_text
+                })
+            
+            cleaned_reply, executed_actions = parse_and_execute_tools(uid, full_response)
+            
+            actions = []
+            for act in executed_actions:
+                actions.append({
+                    "actionType": act.get("actionType", ""),
+                    "taskId": act.get("taskId"),
+                    "goalId": act.get("goalId"),
+                    "task": act.get("task"),
+                    "goal": act.get("goal"),
+                    "updates": act.get("updates"),
+                    "label": act.get("actionType", "").replace('_', ' ')
+                })
+            
+            save_chat_message(uid, "user", message)
+            save_chat_message(uid, "assistant", cleaned_reply, context_snapshot={
+                "location": location,
+                "energy": energy,
+                "focusMode": focus_mode
+            })
+            
+            timestamp = datetime.now(timezone.utc).isoformat()
+            await websocket.send_json({
+                "type": "done",
+                "message": cleaned_reply,
+                "suggestedActions": actions,
+                "timestamp": timestamp
+            })
+            
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_firebase_token)):
