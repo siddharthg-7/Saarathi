@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useAuthStore } from '@saarathi/store';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function Login() {
+  const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const { signIn, signUp } = useAuth();
   const { login: directLogin } = useAuthStore();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(mode === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (mode) {
+      setIsSignUp(mode === 'signup');
+    }
+  }, [mode]);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -50,6 +59,9 @@ export default function Login() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(auth)/landing')}>
+          <Text style={styles.backButtonText}>← Back to Overview</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>Saarathi OS</Text>
         <Text style={styles.subtitle}>
           {isSignUp ? 'Create your workspace account' : 'Sign in to access your workspace'}
@@ -141,6 +153,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  backButtonText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
   },
   title: {
     fontSize: 28,

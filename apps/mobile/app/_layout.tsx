@@ -14,8 +14,8 @@ function AuthProtector({ children }: { children: React.ReactNode }) {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to login if not authenticated and not in auth group
-      router.replace('/(auth)/login');
+      // Redirect to landing if not authenticated and not in auth group
+      router.replace('/(auth)/landing');
     } else if (isAuthenticated && inAuthGroup) {
       // Redirect to home if authenticated and inside auth group
       router.replace('/(tabs)/home');
