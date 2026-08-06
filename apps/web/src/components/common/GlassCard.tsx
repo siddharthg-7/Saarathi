@@ -14,8 +14,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
 }) => {
   return (
     <div
-      className={`bg-gray-900/70 backdrop-blur-md border border-white/10 rounded-xl p-5 shadow-lg transition-all duration-200 ${
-        hoverEffect ? 'hover:border-indigo-500/30 hover:shadow-indigo-500/5' : ''
+      className={`glass-premium rounded-xl p-5 shadow-sm-premium transition-all duration-200 ${
+        hoverEffect ? 'hover:border-primary/30 hover:shadow-medium-premium' : ''
       } ${className}`}
       {...props}
     >

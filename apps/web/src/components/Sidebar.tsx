@@ -84,19 +84,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-gray-950/95 border-r border-white/10 p-4 text-xs font-medium">
+    <div className="flex flex-col h-full bg-surface border-r border-divider p-4 text-xs font-medium">
       {/* App Branding Banner */}
       <div className="mb-6 flex items-center justify-between px-2">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 p-0.5 shadow-lg shadow-indigo-500/30 flex items-center justify-center">
-            <div className="w-full h-full bg-gray-950 rounded-[10px] flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
-            </div>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Saarathi Logo"
+            className="w-7 h-7 object-contain"
+          />
           <div>
-            <div className="text-sm font-bold text-white tracking-wide">Saarathi OS</div>
-            <div className="text-[10px] text-gray-400 flex items-center gap-1">
-              <Zap className="w-3 h-3 text-indigo-400" />
+            <div className="text-sm font-bold text-text tracking-wide">Saarathi OS</div>
+            <div className="text-[10px] text-textSecondary flex items-center gap-1">
+              <Zap className="w-3 h-3 text-primary" />
               <span>Kairo AI Powered</span>
             </div>
           </div>
@@ -104,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           onClick={onCloseMobile}
-          className="lg:hidden p-1 text-gray-400 hover:text-white rounded-lg"
+          className="lg:hidden p-1 text-textSecondary hover:text-text rounded-lg"
         >
           <X className="w-5 h-5" />
         </button>
@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 space-y-6 overflow-y-auto pr-1">
         {navSections.map((section) => (
           <div key={section.title}>
-            <div className="px-2 mb-2 text-[10px] font-bold tracking-wider text-gray-500 uppercase">
+            <div className="px-2 mb-2 text-[10px] font-bold tracking-wider text-muted uppercase">
               {section.title}
             </div>
             <div className="space-y-1">
@@ -130,27 +130,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
                       isActive
-                        ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/40 shadow-sm shadow-indigo-500/10'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+                        ? 'bg-[#EFF6FF] text-primary font-semibold border border-primary/10 shadow-sm'
+                        : 'text-textSecondary hover:text-text hover:bg-surfaceHover border border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <Icon
                         className={`w-4 h-4 ${
-                          isActive ? 'text-indigo-400' : 'text-gray-500 group-hover:text-gray-300'
+                          isActive ? 'text-primary' : 'text-[#64748B] group-hover:text-text'
                         }`}
                       />
                       <span>{item.label}</span>
                     </div>
 
                     {item.badge && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-semibold">
                         {item.badge}
                       </span>
                     )}
 
                     {item.count !== undefined && item.count > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-bold">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-danger text-white font-bold">
                         {item.count}
                       </span>
                     )}
@@ -163,12 +163,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Kairo Proactive Nudge Footer */}
-      <div className="mt-4 p-3 bg-gray-900 border border-white/10 rounded-2xl shadow-lg shadow-indigo-500/5">
+      <div className="mt-4 p-3 bg-surfaceSecondary border border-border rounded-2xl shadow-sm-premium">
         <div className="flex items-center gap-2 mb-1.5">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-semibold text-gray-200 text-[11px]">Kairo Daily Rec</span>
+          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+          <span className="font-semibold text-text text-[11px]">Kairo Daily Rec</span>
         </div>
-        <p className="text-[11px] text-gray-400 leading-relaxed">
+        <p className="text-[11px] text-textSecondary leading-relaxed">
           Peak focus window starts at 09:30 AM. Tackle DBMS Schema first.
         </p>
       </div>

@@ -180,11 +180,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="w-full max-w-xl bg-gray-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden shadow-indigo-500/20">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="w-full max-w-xl bg-surface border border-border rounded-2xl shadow-large-premium overflow-hidden">
         {/* Search Header */}
-        <div className="relative flex items-center px-4 py-3 border-b border-white/10 bg-gray-950/60">
-          <Search className="w-5 h-5 text-indigo-400 mr-3 shrink-0" />
+        <div className="relative flex items-center px-4 py-3 border-b border-divider bg-surfaceSecondary">
+          <Search className="w-5 h-5 text-primary mr-3 shrink-0" />
           <input
             type="text"
             placeholder="Search screens, commands, or type a task title..."
@@ -196,25 +196,25 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               }
             }}
             autoFocus
-            className="w-full bg-transparent text-sm text-gray-100 placeholder-gray-500 focus:outline-none"
+            className="w-full bg-transparent text-sm text-text placeholder-muted focus:outline-none"
           />
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-300 rounded-lg">
+          <button onClick={onClose} className="p-1 text-textSecondary hover:text-text rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Action List */}
-        <div className="max-h-80 overflow-y-auto p-2 divide-y divide-white/5">
+        <div className="max-h-80 overflow-y-auto p-2 divide-y divide-divider">
           {query.trim() && (
             <button
               onClick={handleQuickCreate}
-              className="w-full flex items-center justify-between p-3 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 border border-indigo-500/20 transition-all text-xs font-medium text-left my-1"
+              className="w-full flex items-center justify-between p-3 rounded-xl bg-[#EFF6FF] hover:bg-[#DBEAFE] text-primary border border-primary/20 transition-all text-xs font-medium text-left my-1"
             >
               <span className="flex items-center gap-2">
-                <Plus className="w-4 h-4 text-indigo-400" />
-                Quick Create Task: <strong className="text-white">"{query}"</strong>
+                <Plus className="w-4 h-4 text-primary" />
+                Quick Create Task: <strong className="text-text font-bold">"{query}"</strong>
               </span>
-              <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300">
+              <span className="text-[10px] bg-primary/10 px-2 py-0.5 rounded text-primary">
                 Press Enter ↵
               </span>
             </button>
@@ -230,41 +230,41 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     item.action();
                     onClose();
                   }}
-                  className="w-full flex items-center justify-between p-2.5 my-0.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-all text-xs text-left group"
+                  className="w-full flex items-center justify-between p-2.5 my-0.5 rounded-xl hover:bg-[#EFF6FF] text-textSecondary hover:text-primary transition-all text-xs text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-1.5 rounded-lg bg-gray-800 border border-white/5 text-gray-400 group-hover:text-indigo-400 group-hover:border-indigo-500/30 transition-colors">
+                    <div className="p-1.5 rounded-lg bg-surfaceSecondary border border-border text-muted group-hover:text-primary group-hover:border-primary/25 transition-colors">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="font-medium">{item.label}</div>
-                      <div className="text-[10px] text-gray-500">{item.category}</div>
+                      <div className="text-[10px] text-muted">{item.category}</div>
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all" />
+                  <ArrowRight className="w-3.5 h-3.5 text-muted group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all" />
                 </button>
               );
             })
           ) : (
-            <div className="py-8 text-center text-xs text-gray-500">
+            <div className="py-8 text-center text-xs text-muted">
               No matching commands found. Press Enter to create task "{query}".
             </div>
           )}
         </div>
 
         {/* Footer shortcuts */}
-        <div className="px-4 py-2.5 bg-gray-950/80 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-500">
+        <div className="px-4 py-2.5 bg-surfaceSecondary border-t border-divider flex items-center justify-between text-[11px] text-muted">
           <div className="flex items-center gap-2">
-            <kbd className="px-1.5 py-0.5 bg-gray-800 border border-white/10 rounded text-gray-400 font-mono">
+            <kbd className="px-1.5 py-0.5 bg-surface border border-border rounded text-textSecondary font-mono">
               ↑↓
             </kbd>
             <span>Navigate</span>
-            <kbd className="px-1.5 py-0.5 bg-gray-800 border border-white/10 rounded text-gray-400 font-mono">
+            <kbd className="px-1.5 py-0.5 bg-surface border border-border rounded text-textSecondary font-mono">
               ↵
             </kbd>
             <span>Select</span>
           </div>
-          <div className="flex items-center gap-1.5 text-indigo-400 font-medium">
+          <div className="flex items-center gap-1.5 text-primary font-medium">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Saarathi Raycast Command Line</span>
           </div>

@@ -68,7 +68,7 @@ function AppContent() {
   // 1. Landing Page Flow (Full Screen, Landing Header -> Auth Modal Popup -> Main Workspace)
   if (currentView === 'landing') {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 font-sans selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen bg-background text-text font-sans selection:bg-primary/20 selection:text-primary">
         <LandingPage
           onOpenAuth={(mode) => setAuthModalMode(mode)}
           onEnterWorkspace={handleEnterWorkspace}
@@ -183,7 +183,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-background text-text flex flex-col font-sans selection:bg-primary/20 selection:text-primary">
       {/* Top Navbar */}
       <Navbar
         currentView={currentView}

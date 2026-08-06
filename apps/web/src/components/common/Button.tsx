@@ -15,7 +15,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-xs',
@@ -24,11 +24,11 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variantClasses = {
-    primary: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20',
-    secondary: 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700',
-    outline: 'bg-transparent border border-white/20 text-gray-200 hover:bg-white/10',
-    ghost: 'bg-transparent text-gray-300 hover:bg-white/10 hover:text-white',
-    danger: 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-500/20',
+    primary: 'bg-primary hover:bg-primaryHover text-white shadow-sm',
+    secondary: 'bg-surface border border-border text-text hover:bg-surfaceSecondary',
+    outline: 'bg-transparent border border-border text-textSecondary hover:bg-surfaceSecondary',
+    ghost: 'bg-transparent text-textSecondary hover:bg-surfaceSecondary hover:text-text',
+    danger: 'bg-danger hover:bg-red-600 text-white shadow-sm shadow-danger/25',
   };
 
   return (
