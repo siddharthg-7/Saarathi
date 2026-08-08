@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { initialAnalytics } from './data/initialData';
+import { initialAnalytics } from '@saarathi/store';
 
 // Stores & Contexts
 import { useAuthStore } from '@saarathi/store';

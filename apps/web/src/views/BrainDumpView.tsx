@@ -12,8 +12,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Task, EnergyLevel } from '@saarathi/types';
-import { auth } from '@saarathi/api';
-import { env } from '@/config/env';
+import { auth, env } from '@saarathi/api';
 
 interface BrainDumpViewProps {
   onAddTask: (title: string, category: string, energy: EnergyLevel) => void;

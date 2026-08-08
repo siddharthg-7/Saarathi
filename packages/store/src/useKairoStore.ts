@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { KairoMessage } from '@saarathi/types';
-import { initialKairoChatHistory } from '@/data/initialData';
-import { kairoApi, auth } from '@saarathi/api';
-import { env } from '@/config/env';
+import { initialKairoChatHistory } from './data/initialData';
+import { kairoApi, auth, env } from '@saarathi/api';
 
 interface KairoState {
   chatHistory: KairoMessage[];

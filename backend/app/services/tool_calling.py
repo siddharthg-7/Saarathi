@@ -1,7 +1,7 @@
 import json
 import re
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from app.services.firestore_service import (
     create_task_direct,
     update_task_direct,

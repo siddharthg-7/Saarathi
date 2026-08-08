@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { NotificationItem } from '@saarathi/types';
-import { initialNotifications } from '@/data/initialData';
+import { initialNotifications } from './data/initialData';
 
 interface NotificationState {
   notifications: NotificationItem[];

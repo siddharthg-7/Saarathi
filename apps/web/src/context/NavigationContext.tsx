@@ -39,7 +39,23 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '') as ViewType;
-      if (hash) {
+      const validViews: ViewType[] = [
+        'landing',
+        'dashboard',
+        'today',
+        'calendar',
+        'tasks',
+        'aichat',
+        'analytics',
+        'braindump',
+        'focus',
+        'habits',
+        'goals',
+        'settings',
+        'notifications',
+        'profile',
+      ];
+      if (hash && validViews.includes(hash)) {
         setCurrentView(hash);
       }
     };

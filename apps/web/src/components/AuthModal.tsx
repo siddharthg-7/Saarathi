@@ -54,7 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-md overflow-hidden bg-surface border border-border rounded-2xl shadow-large-premium">
         {/* Glow Header Accent */}
         <div className="h-1.5 w-full bg-gradient-to-r from-primary to-primaryHover" />
