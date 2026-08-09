@@ -6,7 +6,7 @@
 <img src="https://api.iconify.design/lucide:cpu.svg?color=%236366F1&width=48&height=48" alt="Saarathi Logo" />
 
 <p align="center">
-  An AI-powered productivity ecosystem that learns from user behavior, predicts procrastination, intelligently schedules work, and guides long-term goals.
+  An AI-powered productivity ecosystem that learns from user behavior, predicts procrastination, intelligently schedules work, and guides long-term goals.It is Advanced Assiatnt Which takes care About The User.
 </p>
 
 <p align="center">
