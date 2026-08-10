@@ -251,3 +251,47 @@
 
 
 
+/* Aether Bottles SVG Animation */
+.aether-bottles .liquid-fill,
+.aether-bottles .liquid-wave {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.aether-bottles svg:hover .liquid-wave {
+  animation: aether-wave 1.8s ease-in-out infinite;
+}
+
+.aether-bottles svg:hover .liquid-fill {
+  animation: aether-fill 1.8s ease-in-out infinite;
+}
+
+@keyframes aether-wave {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(-3px) translateY(-2px);
+  }
+  50% {
+    transform: translateX(3px) translateY(-1px);
+  }
+  75% {
+    transform: translateX(-2px) translateY(-3px);
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+}
+
+@keyframes aether-fill {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(-2px);
+  }
+}
