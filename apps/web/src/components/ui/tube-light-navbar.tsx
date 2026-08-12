@@ -61,7 +61,7 @@ export function NavBar({ items, className }: NavBarProps) {
             window.removeEventListener("resize", handleResize)
             window.removeEventListener("scroll", handleScroll)
         }
-    }, [])
+    }, [items])
 
     return (
         <div
