@@ -9,31 +9,82 @@ import {
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-const getEnvVar = (key: string): string => {
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env[`EXPO_PUBLIC_${key}`]) return process.env[`EXPO_PUBLIC_${key}`] as string;
-    if (process.env[`VITE_${key}`]) return process.env[`VITE_${key}`] as string;
-    if (process.env[key]) return process.env[key] as string;
-  }
+// Static environment variable resolution for Vite and React Native / Expo bundlers
+const getFirebaseApiKey = (): string => {
   try {
-    const metaObj = (new Function('return import.meta'))();
-    const metaEnv = metaObj ? metaObj.env : null;
-    if (metaEnv) {
-      if (metaEnv[`VITE_${key}`]) return metaEnv[`VITE_${key}`];
-      if (metaEnv[`EXPO_PUBLIC_${key}`]) return metaEnv[`EXPO_PUBLIC_${key}`];
-    }
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv?.VITE_FIREBASE_API_KEY) return metaEnv.VITE_FIREBASE_API_KEY;
   } catch {}
-  return '';
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_FIREBASE_API_KEY) return process.env.VITE_FIREBASE_API_KEY;
+    if (process.env.EXPO_PUBLIC_FIREBASE_API_KEY) return process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
+  }
+  return 'AIzaSyB4tj4lMaEa-cW_8d9Tdodz4iy5JSOlHQA';
+};
+
+const getFirebaseAuthDomain = (): string => {
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv?.VITE_FIREBASE_AUTH_DOMAIN) return metaEnv.VITE_FIREBASE_AUTH_DOMAIN;
+  } catch {}
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_FIREBASE_AUTH_DOMAIN) return process.env.VITE_FIREBASE_AUTH_DOMAIN;
+  }
+  return 'saarathi-331b4.firebaseapp.com';
+};
+
+const getFirebaseProjectId = (): string => {
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv?.VITE_FIREBASE_PROJECT_ID) return metaEnv.VITE_FIREBASE_PROJECT_ID;
+  } catch {}
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_FIREBASE_PROJECT_ID) return process.env.VITE_FIREBASE_PROJECT_ID;
+  }
+  return 'saarathi-331b4';
+};
+
+const getFirebaseStorageBucket = (): string => {
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv?.VITE_FIREBASE_STORAGE_BUCKET) return metaEnv.VITE_FIREBASE_STORAGE_BUCKET;
+  } catch {}
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_FIREBASE_STORAGE_BUCKET) return process.env.VITE_FIREBASE_STORAGE_BUCKET;
+  }
+  return 'saarathi-331b4.firebasestorage.app';
+};
+
+const getFirebaseMessagingSenderId = (): string => {
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv?.VITE_FIREBASE_MESSAGING_SENDER_ID) return metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID;
+  } catch {}
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_FIREBASE_MESSAGING_SENDER_ID) return process.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
+  }
+  return '404569610018';
+};
+
+const getFirebaseAppId = (): string => {
+  try {
+    const metaEnv = (import.meta as any)?.env;
+    if (metaEnv?.VITE_FIREBASE_APP_ID) return metaEnv.VITE_FIREBASE_APP_ID;
+  } catch {}
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.VITE_FIREBASE_APP_ID) return process.env.VITE_FIREBASE_APP_ID;
+  }
+  return '1:404569610018:web:2f7d67bbb516202dd9b77b';
 };
 
 const firebaseConfig = {
-  apiKey: getEnvVar('FIREBASE_API_KEY') || 'dummy-api-key',
-  authDomain: getEnvVar('FIREBASE_AUTH_DOMAIN') || 'dummy-auth-domain',
-  projectId: getEnvVar('FIREBASE_PROJECT_ID') || 'dummy-project-id',
-  storageBucket: getEnvVar('FIREBASE_STORAGE_BUCKET') || 'dummy-storage-bucket',
-  messagingSenderId: getEnvVar('FIREBASE_MESSAGING_SENDER_ID') || 'dummy-sender-id',
-  appId: getEnvVar('FIREBASE_APP_ID') || 'dummy-app-id',
-  measurementId: getEnvVar('FIREBASE_MEASUREMENT_ID') || 'dummy-measurement-id',
+  apiKey: getFirebaseApiKey(),
+  authDomain: getFirebaseAuthDomain(),
+  projectId: getFirebaseProjectId(),
+  storageBucket: getFirebaseStorageBucket(),
+  messagingSenderId: getFirebaseMessagingSenderId(),
+  appId: getFirebaseAppId(),
+  measurementId: 'G-YTY130STLF',
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

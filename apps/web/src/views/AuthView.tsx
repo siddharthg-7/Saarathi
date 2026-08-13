@@ -26,6 +26,35 @@ const COUNTRY_CODES = [
   { code: '+65', country: 'SG', flag: '🇸🇬' },
 ];
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^\d{7,15}$/;
+
+const sanitizeText = (input: string): string => {
+  return input.replace(/[<>]/g, '').trim();
+};
+
+const formatAuthError = (err: any): string => {
+  const code = err?.code || '';
+  const message = err?.message || '';
+
+  if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+    return 'Invalid email or password. Please verify your credentials.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'An account with this email address already exists. Please sign in.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Password is too weak. Please use at least 8 characters.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Too many unsuccessful attempts. Please wait a few minutes before trying again.';
+  }
+  if (code === 'auth/invalid-email') {
+    return 'Please enter a valid email address.';
+  }
+  return message || 'An error occurred during authentication. Please try again.';
+};
+
 export const AuthView: React.FC<AuthViewProps> = ({
   initialMode = 'signin',
   onSuccess,
@@ -46,38 +75,65 @@ export const AuthView: React.FC<AuthViewProps> = ({
     e.preventDefault();
     setError('');
 
-    if (activeTab === 'signin') {
-      if (!email || !password) {
-        setError('Please enter your email and password.');
+    const cleanEmail = email.trim();
+    const cleanName = sanitizeText(name);
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+
+    // 1. Email Format Security Check
+    if (!cleanEmail || !EMAIL_REGEX.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    // 2. Password Strength Security Check
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+
+    if (activeTab === 'register') {
+      // 3. Name Security Check
+      if (!cleanName) {
+        setError('Please enter your full name.');
         return;
       }
-    } else {
-      if (!name || !email || !password || !phoneNumber) {
-        setError('Please fill in all required fields including phone number.');
+      // 4. Phone Format Security Check
+      if (!cleanPhone || !PHONE_REGEX.test(cleanPhone)) {
+        setError('Please enter a valid phone number (7 to 15 digits).');
         return;
       }
     }
 
     setIsLoading(true);
 
-    const fullPhone = phoneNumber ? `${countryCode} ${phoneNumber}` : '';
+    const fullPhone = cleanPhone ? `${countryCode} ${cleanPhone}` : '';
 
     try {
       if (activeTab === 'register') {
         let userId = 'user_' + Date.now();
-        let userEmail = email;
-        let displayName = name;
+        let userEmail = cleanEmail;
+        let displayName = cleanName;
 
         // 1. Authenticate & Create User in Firebase Auth
         try {
-          const authUser = await signUpWithEmail(email, password, name);
+          const authUser = await signUpWithEmail(cleanEmail, password, cleanName);
           if (authUser) {
             userId = authUser.uid;
-            userEmail = authUser.email || email;
+            userEmail = authUser.email || cleanEmail;
             if (authUser.displayName) displayName = authUser.displayName;
           }
         } catch (firebaseAuthErr: any) {
           console.warn('Firebase Auth notice:', firebaseAuthErr?.message || firebaseAuthErr);
+          const errCode = firebaseAuthErr?.code || '';
+          const errMessage = firebaseAuthErr?.message || '';
+          if (errCode.includes('api-key') || errMessage.includes('api-key')) {
+            // API key fallback for local / dev environment
+            userId = 'usr_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+          } else {
+            setError(formatAuthError(firebaseAuthErr));
+            setIsLoading(false);
+            return;
+          }
         }
 
         // 2. Persist User Document in Firebase Firestore Database ('users' collection)
@@ -105,7 +161,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
         // 1. Sign In with Firebase Auth
         try {
-          const authUser = await signInWithEmail(email, password);
+          const authUser = await signInWithEmail(cleanEmail, password);
           if (authUser) {
             userId = authUser.uid;
             // 2. Fetch User Record from Firestore Database
@@ -113,18 +169,27 @@ export const AuthView: React.FC<AuthViewProps> = ({
           }
         } catch (firebaseAuthErr: any) {
           console.warn('Firebase Sign-In notice:', firebaseAuthErr?.message || firebaseAuthErr);
+          const errCode = firebaseAuthErr?.code || '';
+          const errMessage = firebaseAuthErr?.message || '';
+          if (errCode.includes('api-key') || errMessage.includes('api-key')) {
+            userId = 'usr_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+          } else {
+            setError(formatAuthError(firebaseAuthErr));
+            setIsLoading(false);
+            return;
+          }
         }
 
         onSuccess({
           id: userId,
-          email,
-          name: fetchedDoc?.name || email.split('@')[0],
+          email: cleanEmail,
+          name: fetchedDoc?.name || cleanEmail.split('@')[0],
           phone: fetchedDoc?.phone || '',
           ...fetchedDoc,
         });
       }
     } catch (err: any) {
-      setError(err?.message || 'Authentication error occurred. Please try again.');
+      setError(formatAuthError(err));
     } finally {
       setIsLoading(false);
     }
