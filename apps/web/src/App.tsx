@@ -17,6 +17,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { AuthModal } from './components/AuthModal';
 
 // Views
+import { AuthView } from './views/AuthView';
 import { LandingPage } from './views/LandingPage';
 import { DashboardView } from './views/DashboardView';
 import { TodayView } from './views/TodayView';
@@ -64,6 +65,19 @@ function AppContent() {
       setCurrentView('dashboard');
     }
   };
+
+  // Full Screen Standalone Auth View
+  if (currentView === ('auth' as any)) {
+    return (
+      <AuthView
+        initialMode={authModalMode || 'signin'}
+        onSuccess={(updated) => {
+          login(updated);
+          setCurrentView('dashboard');
+        }}
+      />
+    );
+  }
 
   // 1. Landing Page Flow (Full Screen, Landing Header -> Auth Modal Popup -> Main Workspace)
   if (currentView === 'landing') {

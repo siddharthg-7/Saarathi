@@ -181,20 +181,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Spline 3D Model with cropping offset quirk */}
-          <div className="lg:col-span-6 relative h-[400px] lg:h-[550px] flex items-center justify-center z-0 animate-on-scroll">
-            <div className="absolute inset-0 border border-border rounded-3xl bg-[#FFFFFF]/30 backdrop-blur-sm overflow-hidden group">
+          {/* Right Column: Hero Spline 3D Model (Genkub Greeting Robot) */}
+          <div className="lg:col-span-6 relative h-[450px] lg:h-[580px] flex items-center justify-center z-0 animate-on-scroll">
+            <div className="absolute inset-0 border border-border rounded-3xl bg-[#FFFFFF]/40 backdrop-blur-sm overflow-hidden group shadow-xl shadow-primary/5">
               <div className="overflow-hidden w-full h-full relative">
                 <iframe
                   loading="lazy"
-                  src="https://my.spline.design/nexbotrobotcharacterconcept-f9fb70f64f78f621dac9e33520a8dd0c/"
+                  src="https://my.spline.design/genkubgreetingrobot-ojzcjWInavuKpZSt2luvgvjl/"
                   frameBorder="0"
                   style={{ width: '100%', height: '100%' }}
-                  className="grayscale-[20%] contrast-125 opacity-90 absolute top-0 left-0 pointer-events-auto scale-125 translate-x-12 translate-y-12"
+                  className="w-full h-full absolute top-0 left-0 pointer-events-auto scale-110 translate-y-2 transition-transform duration-700 group-hover:scale-115"
                 ></iframe>
                 <div className="pointer-events-none bg-gradient-to-t from-background via-transparent to-transparent absolute inset-0"></div>
-                <div className="flex flex-col bg-surface/90 w-full z-20 border-border border-t pt-5 pb-5 absolute bottom-0 left-0 backdrop-blur-md justify-center">
-                  <p className="text-[10px] uppercase font-medium text-muted tracking-[0.2em] mb-4 px-6 text-center">
+                <div className="flex flex-col bg-surface/90 w-full z-20 border-border border-t pt-4 pb-4 absolute bottom-0 left-0 backdrop-blur-md justify-center">
+                  <p className="text-[10px] uppercase font-medium text-muted tracking-[0.2em] mb-3 px-6 text-center">
                     Connects with your workflow
                   </p>
                   {/* Technology Logo Marquee */}
@@ -246,14 +246,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="h-[1px] bg-gradient-to-r from-border to-divider flex-grow mx-6"></div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24">
-            <div className="lg:col-span-4 flex flex-col justify-start animate-on-scroll">
-              <p className="leading-relaxed text-sm text-textSecondary font-sans">
-                "Productivity is not about working harder, it's about building a better system."
-              </p>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+            {/* Left Column: Nexbot 3D Character Model Frame */}
+            <div className="lg:col-span-5 flex flex-col items-center justify-center animate-on-scroll">
+              <div className="relative w-full h-[380px] sm:h-[440px] rounded-3xl border border-border bg-gradient-to-b from-white/60 to-surface/80 shadow-xl overflow-hidden group">
+                <iframe
+                  loading="lazy"
+                  src="https://my.spline.design/nexbotrobotcharacterconcept-f9fb70f64f78f621dac9e33520a8dd0c/"
+                  frameBorder="0"
+                  style={{ width: '100%', height: '100%' }}
+                  className="w-full h-full absolute top-0 left-0 pointer-events-auto scale-125 translate-x-4 translate-y-6 contrast-110"
+                ></iframe>
+                <div className="pointer-events-none bg-gradient-to-t from-background/90 via-transparent to-transparent absolute inset-0"></div>
+                <div className="absolute bottom-4 left-4 right-4 p-4 bg-white/90 backdrop-blur-md rounded-2xl border border-border shadow-sm z-10">
+                  <p className="text-xs text-textSecondary font-sans italic text-center leading-relaxed">
+                    "Productivity is not about working harder, it's about building a better system."
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="lg:col-span-8 flex flex-col justify-center">
+            {/* Right Column: About Statement Text */}
+            <div className="lg:col-span-7 flex flex-col justify-center">
               <h3 className="md:text-4xl lg:text-5xl leading-[1.3] text-3xl font-normal tracking-wide font-[Space_Grotesk] group animate-on-scroll flex flex-wrap gap-x-2 gap-y-1">
                 {aboutWords.map((w, idx) => (
                   <span
