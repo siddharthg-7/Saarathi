@@ -91,9 +91,8 @@ async def call_groq_chat_stream(
     Call Groq API with Llama 3.3 and yield response chunks.
     """
     if not settings.GROQ_API_KEY:
-        logger.warning("GROQ_API_KEY is not configured.")
-        yield "Groq API Key not configured. (Mock response)"
-        return
+        logger.info("GROQ_API_KEY is not configured, triggering fallback.")
+        raise ValueError("GROQ_API_KEY not configured")
 
     model_name = "llama-3.3-70b-versatile" if "llama-3.3" in model else model
     
@@ -109,33 +108,28 @@ async def call_groq_chat_stream(
         "stream": True
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            async with client.stream("POST", url, headers=headers, json=payload) as response:
-                if response.status_code != 200:
-                    error_text = await response.aread()
-                    logger.error(f"Groq API error {response.status_code}: {error_text}")
-                    yield f"Error calling Groq: {error_text.decode()}"
-                    return
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        async with client.stream("POST", url, headers=headers, json=payload) as response:
+            if response.status_code != 200:
+                error_text = await response.aread()
+                logger.error(f"Groq API error {response.status_code}: {error_text}")
+                raise RuntimeError(f"Groq API error {response.status_code}: {error_text.decode('utf-8', errors='ignore')}")
 
-                async for line in response.aiter_lines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if line == "data: [DONE]":
-                        break
-                    if line.startswith("data: "):
-                        try:
-                            import json
-                            data = json.loads(line[6:])
-                            delta = data["choices"][0]["delta"]
-                            if "content" in delta:
-                                yield delta["content"]
-                        except Exception as e:
-                            logger.error(f"Error parsing streaming chunk: {e} for line: {line}")
-    except httpx.RequestError as e:
-        logger.error(f"HTTP request error calling Groq stream: {str(e)}")
-        yield f"\n[Failed to connect to Groq: {str(e)}]"
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line:
+                    continue
+                if line == "data: [DONE]":
+                    break
+                if line.startswith("data: "):
+                    try:
+                        import json
+                        data = json.loads(line[6:])
+                        delta = data["choices"][0]["delta"]
+                        if "content" in delta:
+                            yield delta["content"]
+                    except Exception as e:
+                        logger.error(f"Error parsing streaming chunk: {e} for line: {line}")
 
 async def call_gemini(
     contents: List[Dict[str, Any]],

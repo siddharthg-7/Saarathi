@@ -58,21 +58,44 @@ export const useKairoStore = create<KairoState>((set) => ({
     const wsUrl = getWsUrl();
     let accumulatedContent = '';
     let hasReceivedChunk = false;
+    let fallbackExecuted = false;
 
-    const fallbackResponse = () => {
-      if (hasReceivedChunk) return;
-      set((state) => {
-        const history = [...state.chatHistory];
-        const lastMsg = history[history.length - 1];
-        if (lastMsg && lastMsg.id === assistantMsgId) {
-          lastMsg.message = `I've analyzed your request: "${userMessage}". Based on your schedule and peak energy window (09:30 AM - 11:30 AM), I recommend completing high-priority coding tasks first to build momentum.`;
-          lastMsg.source = 'kairo-local-engine';
-        }
-        return {
-          chatHistory: history,
-          isThinking: false,
-        };
-      });
+    const executeFallback = async () => {
+      if (hasReceivedChunk || fallbackExecuted) return;
+      fallbackExecuted = true;
+
+      try {
+        const restResponse = await kairoApi.sendMessage(userMessage, context);
+        set((state) => {
+          const history = [...state.chatHistory];
+          const lastMsg = history[history.length - 1];
+          if (lastMsg && lastMsg.id === assistantMsgId) {
+            lastMsg.message = restResponse.message;
+            lastMsg.source = restResponse.source || 'kairo-rest-engine';
+            if (restResponse.suggestedActions) {
+              lastMsg.suggestedActions = restResponse.suggestedActions;
+            }
+          }
+          return {
+            chatHistory: history,
+            isThinking: false,
+          };
+        });
+      } catch (e) {
+        console.warn('REST fallback also encountered error:', e);
+        set((state) => {
+          const history = [...state.chatHistory];
+          const lastMsg = history[history.length - 1];
+          if (lastMsg && lastMsg.id === assistantMsgId) {
+            lastMsg.message = `I've analyzed your request: "${userMessage}". Based on your schedule and peak energy window (09:30 AM - 11:30 AM), I recommend completing high-priority coding tasks first to build momentum.`;
+            lastMsg.source = 'kairo-local-engine';
+          }
+          return {
+            chatHistory: history,
+            isThinking: false,
+          };
+        });
+      }
     };
 
     try {
@@ -113,7 +136,7 @@ export const useKairoStore = create<KairoState>((set) => ({
                 });
                 lastMsg.suggestedActions = data.suggestedActions?.map((a: any) => ({
                   ...a,
-                  label: a.actionType.replace('_', ' '),
+                  label: a.actionType?.replace('_', ' ') || '',
                 }));
               }
               return {
@@ -129,17 +152,19 @@ export const useKairoStore = create<KairoState>((set) => ({
       };
 
       ws.onerror = (err) => {
-        console.error('WebSocket connection error:', err);
-        fallbackResponse();
+        console.warn('WebSocket connection error (falling back to REST):', err);
+        executeFallback();
       };
 
       ws.onclose = () => {
         set({ isThinking: false });
-        fallbackResponse();
+        if (!hasReceivedChunk) {
+          executeFallback();
+        }
       };
     } catch (err) {
-      console.error('Error establishing WebSocket:', err);
-      fallbackResponse();
+      console.warn('Error establishing WebSocket (falling back to REST):', err);
+      executeFallback();
     }
   },
 

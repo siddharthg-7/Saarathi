@@ -14,6 +14,13 @@ export default defineConfig(() => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      proxy: {
+        '/v1': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          ws: true,
+        },
+      },
     },
   };
 });

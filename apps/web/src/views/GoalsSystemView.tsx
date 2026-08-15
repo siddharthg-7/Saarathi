@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Target, Sparkles, Plus, CheckCircle2, ArrowRight, Layers, Clock } from 'lucide-react';
 import { Goal, Milestone } from '@saarathi/types';
+import { kairoApi } from '@saarathi/api';
 
 interface GoalsSystemViewProps {
   goals: Goal[];
@@ -21,12 +22,7 @@ export const GoalsSystemView: React.FC<GoalsSystemViewProps> = ({ goals, onAddGo
     setIsDecomposing(true);
 
     try {
-      const response = await fetch('/api/kairo/goal-decompose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goalTitle, targetDate, category: goalCategory }),
-      });
-      const data = await response.json();
+      const data = await kairoApi.decomposeGoal(goalTitle, targetDate, goalCategory);
 
       const createdMilestones: Milestone[] = (data.milestones || []).map((m: any, idx: number) => ({
         id: `ms_${Date.now()}_${idx}`,

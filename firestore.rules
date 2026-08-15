@@ -15,13 +15,14 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, create, update: if isOwner(userId);
       allow delete: if false; // User accounts cannot be deleted directly without admin review
-    }
 
-    // All data owned by a user lives in per-user subcollections
-    // (tasks, projects, goals, ...). Scope every document under the
-    // user's path to the owner so cross-user access is impossible.
-    match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
+      // All data owned by a user lives in per-user subcollections
+      // (tasks, projects, goals, ...). Scoping the recursive wildcard
+      // INSIDE this match ensures it only applies to documents below the
+      // profile and can never grant delete on the profile document itself.
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
     // User settings security rules

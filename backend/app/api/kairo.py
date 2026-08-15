@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
 from pydantic import BaseModel
 from app.core.security import verify_firebase_token
 from app.services.firestore_service import (
@@ -54,12 +54,13 @@ class DailyBriefResponse(BaseModel):
     scheduleSummary: List[Dict[str, str]]
 
 @router.websocket("/chat/ws")
-async def chat_ws(websocket: WebSocket, token: Optional[str] = None):
+async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
     await websocket.accept()
     
+    auth_token = token or websocket.query_params.get("token")
     try:
         from app.core.security import decode_token_payload
-        payload = decode_token_payload(token) if token else {}
+        payload = decode_token_payload(auth_token) if auth_token else {}
         uid = payload.get("uid") or payload.get("user_id") or payload.get("sub") or "dev-user-uid"
     except Exception as e:
         logger.warning(f"WebSocket auth fallback: {e}")
@@ -278,4 +279,78 @@ async def get_daily_briefing(uid: str = Depends(verify_firebase_token)):
                 for t in tasks if t.get("status") in ["pending", "in_progress"]
             ][:2]
         )
+
+class GoalDecomposeRequest(BaseModel):
+    goalTitle: str
+    targetDate: Optional[str] = None
+    category: Optional[str] = "Career"
+
+class GoalMilestoneModel(BaseModel):
+    title: str
+    targetWeeks: str = "Weeks 1-4"
+    progress: int = 0
+
+class DailyTaskModel(BaseModel):
+    title: str
+    duration: int = 30
+    energy: str = "Medium"
+
+class GoalDecomposeResponse(BaseModel):
+    milestones: List[GoalMilestoneModel]
+    dailyTasks: List[DailyTaskModel]
+
+@router.post("/goal-decompose", response_model=GoalDecomposeResponse)
+async def decompose_goal_endpoint(payload: GoalDecomposeRequest):
+    prompt = f"""You are Kairo AI Goal Architect.
+Break down the macro goal '{payload.goalTitle}' (Category: {payload.category}, Target: {payload.targetDate or 'Open'}) into a strategic roadmap.
+Return a JSON object with this exact schema:
+{{
+  "milestones": [
+    {{ "title": "Milestone 1 title", "targetWeeks": "Weeks 1-2", "progress": 0 }},
+    {{ "title": "Milestone 2 title", "targetWeeks": "Weeks 3-4", "progress": 0 }},
+    {{ "title": "Milestone 3 title", "targetWeeks": "Weeks 5-8", "progress": 0 }}
+  ],
+  "dailyTasks": [
+    {{ "title": "Task 1", "duration": 45, "energy": "High" }},
+    {{ "title": "Task 2", "duration": 30, "energy": "Medium" }}
+  ]
+}}
+Only output valid JSON."""
+
+    messages = [
+        {"role": "system", "content": "You are a strategic goal decomposition AI. Output JSON only."},
+        {"role": "user", "content": prompt}
+    ]
+
+    try:
+        response_text = await call_groq_chat(messages, model="llama-3.3-70b-versatile")
+    except Exception:
+        contents = [{"role": "user", "parts": [{"text": prompt}]}]
+        response_text = await call_gemini(contents, system_instruction="Output JSON only.")
+
+    cleaned_json = response_text
+    json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
+    if json_match:
+        cleaned_json = json_match.group(1).strip()
+    
+    try:
+        data = json.loads(cleaned_json)
+        return GoalDecomposeResponse(
+            milestones=data.get("milestones", []),
+            dailyTasks=data.get("dailyTasks", [])
+        )
+    except Exception as e:
+        logger.error(f"Error parsing goal decompose response: {e}")
+        return GoalDecomposeResponse(
+            milestones=[
+                GoalMilestoneModel(title="Foundational Knowledge & Setup", targetWeeks="Weeks 1-2", progress=0),
+                GoalMilestoneModel(title="Core Implementation & Prototype", targetWeeks="Weeks 3-5", progress=0),
+                GoalMilestoneModel(title="Final Polish & Deployment", targetWeeks="Weeks 6-8", progress=0),
+            ],
+            dailyTasks=[
+                DailyTaskModel(title=f"Research & plan architecture for {payload.goalTitle}", duration=45, energy="High"),
+                DailyTaskModel(title="Set up implementation workspace", duration=30, energy="Medium"),
+            ]
+        )
+
 
