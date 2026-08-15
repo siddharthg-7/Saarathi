@@ -1,5 +1,6 @@
 export type ViewType =
   | 'landing'
+  | 'auth'
   | 'dashboard'
   | 'today'
   | 'calendar'

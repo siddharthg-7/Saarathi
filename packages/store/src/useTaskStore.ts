@@ -10,6 +10,7 @@ import {
   Project,
   SyncStatus,
 } from '@saarathi/types';
+import { initialTasks } from './data/initialData';
 import {
   telemetryApi,
   mlApi,
@@ -23,6 +24,7 @@ import {
   deleteProjectDoc,
   resolveConflict,
 } from '@saarathi/api';
+
 
 interface TaskState {
   tasks: Task[];
@@ -84,7 +86,7 @@ const initialFilter: TaskFilterState = {
 };
 
 export const useTaskStore = create<TaskState>((set, get) => ({
-  tasks: [],
+  tasks: initialTasks,
   projects: [],
   filter: initialFilter,
   isLoading: false,

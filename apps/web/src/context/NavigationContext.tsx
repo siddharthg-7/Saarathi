@@ -1,6 +1,31 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ViewType } from '@saarathi/types';
 
+export const ALL_VIEWS: ViewType[] = [
+  'landing',
+  'dashboard',
+  'today',
+  'calendar',
+  'tasks',
+  'aichat',
+  'analytics',
+  'braindump',
+  'focus',
+  'habits',
+  'goals',
+  'settings',
+  'notifications',
+  'profile',
+];
+
+// Views that are safe to render without an authenticated user.
+export const PUBLIC_VIEWS: ViewType[] = ['landing', 'auth'];
+
+export const isPublicView = (view: ViewType): boolean => PUBLIC_VIEWS.includes(view);
+
+export const isValidView = (view: string): view is ViewType =>
+  ALL_VIEWS.includes(view as ViewType);
+
 interface NavigationContextType {
   currentView: ViewType;
   setCurrentView: (view: ViewType) => void;
@@ -12,23 +37,7 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentView, setCurrentView] = useState<ViewType>(() => {
     const hash = window.location.hash.replace('#', '');
-    const validViews: ViewType[] = [
-      'landing',
-      'dashboard',
-      'today',
-      'calendar',
-      'tasks',
-      'aichat',
-      'analytics',
-      'braindump',
-      'focus',
-      'habits',
-      'goals',
-      'settings',
-      'notifications',
-      'profile',
-    ];
-    return validViews.includes(hash as ViewType) ? (hash as ViewType) : 'landing';
+    return isValidView(hash) ? hash : 'landing';
   });
 
   const navigate = (view: ViewType) => {
@@ -38,24 +47,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '') as ViewType;
-      const validViews: ViewType[] = [
-        'landing',
-        'dashboard',
-        'today',
-        'calendar',
-        'tasks',
-        'aichat',
-        'analytics',
-        'braindump',
-        'focus',
-        'habits',
-        'goals',
-        'settings',
-        'notifications',
-        'profile',
-      ];
-      if (hash && validViews.includes(hash)) {
+      const hash = window.location.hash.replace('#', '');
+      if (isValidView(hash)) {
         setCurrentView(hash);
       }
     };

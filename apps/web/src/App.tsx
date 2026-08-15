@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { initialAnalytics } from '@saarathi/store';
 
 // Stores & Contexts
@@ -7,8 +8,10 @@ import { useTaskStore } from '@saarathi/store';
 import { useKairoStore } from '@saarathi/store';
 import { useHabitGoalStore } from '@saarathi/store';
 import { useNotificationStore } from '@saarathi/store';
+import { subscribeToAuthState } from '@saarathi/api';
+import type { UserProfile } from '@saarathi/types';
 import { ThemeProvider } from './context/ThemeContext';
-import { NavigationProvider, useNavigation } from './context/NavigationContext';
+import { NavigationProvider, useNavigation, isPublicView } from './context/NavigationContext';
 
 // Layout Components
 import { Navbar } from './components/Navbar';
@@ -33,7 +36,7 @@ import { SettingsView } from './views/SettingsView';
 import { NotificationsProfileView } from './views/NotificationsProfileView';
 
 function AppContent() {
-  const { currentView, setCurrentView } = useNavigation();
+  const { currentView, setCurrentView, navigate } = useNavigation();
 
   // Auth Store
   const { userProfile, authModalMode, setAuthModalMode, updateUserProfile, isAuthenticated, login, logout } =
@@ -58,6 +61,48 @@ function AppContent() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // 0. Bootstrap persistent auth session (so a refresh keeps the user logged in
+  //    and the route guard reflects the real authentication state).
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthState((user) => {
+      const { isAuthenticated: authed, login: doLogin, logout: doLogout } = useAuthStore.getState();
+      if (user) {
+        if (!authed) {
+          doLogin({
+            id: user.uid,
+            name: user.displayName || user.email?.split('@')[0] || 'User',
+            email: user.email || '',
+          });
+        }
+      } else {
+        doLogout();
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // 1. Initialize real-time Firestore listeners for Tasks and Goals when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !userProfile?.id) return;
+    const unsubTasks = useTaskStore.getState().initTaskListener(userProfile.id);
+    const unsubGoals = useHabitGoalStore.getState().initGoalListener(userProfile.id);
+    return () => {
+      unsubTasks();
+      unsubGoals();
+    };
+  }, [isAuthenticated, userProfile?.id]);
+
+  // Security: Route guard. Any view that is not public requires authentication.
+  // If an unauthenticated user navigates (incl. by editing the URL hash) to a
+  // protected view, bounce them back to the landing page and prompt sign-in.
+  useEffect(() => {
+    if (!isPublicView(currentView) && !isAuthenticated) {
+      setAuthModalMode('signin');
+      toast.error('Please sign in to access that page.');
+      navigate('landing');
+    }
+  }, [currentView, isAuthenticated, navigate, setAuthModalMode]);
+
   const handleEnterWorkspace = () => {
     if (!isAuthenticated) {
       setAuthModalMode('signin');
@@ -66,15 +111,18 @@ function AppContent() {
     }
   };
 
+  const handleAuthSuccess = (updated?: Partial<UserProfile>) => {
+    login(updated);
+    toast.success('Welcome to Saarathi!');
+    setCurrentView('dashboard');
+  };
+
   // Full Screen Standalone Auth View
-  if (currentView === ('auth' as any)) {
+  if (currentView === 'auth') {
     return (
       <AuthView
         initialMode={authModalMode || 'signin'}
-        onSuccess={(updated) => {
-          login(updated);
-          setCurrentView('dashboard');
-        }}
+        onSuccess={handleAuthSuccess}
       />
     );
   }
@@ -93,10 +141,7 @@ function AppContent() {
         <AuthModal
           mode={authModalMode}
           onClose={() => setAuthModalMode(null)}
-          onSuccess={(updated) => {
-            login(updated);
-            setCurrentView('dashboard');
-          }}
+          onSuccess={handleAuthSuccess}
         />
       </div>
     );
@@ -239,10 +284,7 @@ function AppContent() {
       <AuthModal
         mode={authModalMode}
         onClose={() => setAuthModalMode(null)}
-        onSuccess={(updated) => {
-          login(updated);
-          setCurrentView('dashboard');
-        }}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );

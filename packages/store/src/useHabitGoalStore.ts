@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Habit, Goal, SyncStatus } from '@saarathi/types';
+import { initialHabits, initialGoals } from './data/initialData';
 import { createGoalDoc, subscribeToGoals, resolveConflict } from '@saarathi/api';
 
 interface HabitGoalState {
@@ -14,8 +15,8 @@ interface HabitGoalState {
 }
 
 export const useHabitGoalStore = create<HabitGoalState>((set, get) => ({
-  habits: [],
-  goals: [],
+  habits: initialHabits,
+  goals: initialGoals,
   activeUid: null,
 
   initGoalListener: (uid: string) => {

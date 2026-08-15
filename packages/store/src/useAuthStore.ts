@@ -42,7 +42,7 @@ interface AuthState {
   setUserSettings: (settings: UserSettings) => void;
   updateUserProfile: (partial: Partial<UserProfile>) => void;
   updateUserSettings: (partial: Partial<UserSettings>) => void;
-  login: (profile?: Partial<UserProfile>, settings?: Partial<UserSettings>) => void;
+   login: (profile?: Partial<UserProfile>, settings?: Partial<UserSettings>) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
 }

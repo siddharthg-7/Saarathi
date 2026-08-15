@@ -9,19 +9,36 @@ logger = logging.getLogger(__name__)
 
 # Initialize firestore client lazily
 _db = None
+_firestore_available: Optional[bool] = None
+
+# In-memory storage for dev / local testing when Firestore ADC credentials are not configured
+_in_memory_tasks: Dict[str, List[Dict[str, Any]]] = {}
+_in_memory_goals: Dict[str, List[Dict[str, Any]]] = {}
+_in_memory_projects: Dict[str, List[Dict[str, Any]]] = {}
+_in_memory_chat: Dict[str, List[Dict[str, Any]]] = {}
 
 def get_db():
-    global _db
+    global _db, _firestore_available
+    if _firestore_available is False:
+        return None
     if _db is None:
-        _db = firestore.client()
+        try:
+            _db = firestore.client()
+            _firestore_available = True
+        except Exception as e:
+            _firestore_available = False
+            logger.info(f"Firestore ADC credentials not found ({e}). Using local in-memory fallback store for session.")
+            return None
     return _db
 
-def get_user_tasks(uid: str):
+def get_user_tasks(uid: str) -> List[Dict[str, Any]]:
     """
     Fetch all tasks for a specific user.
     """
+    db = get_db()
+    if db is None:
+        return list(_in_memory_tasks.get(uid, []))
     try:
-        db = get_db()
         docs = db.collection('users').document(uid).collection('tasks').stream()
         tasks = []
         for doc in docs:
@@ -30,15 +47,17 @@ def get_user_tasks(uid: str):
             tasks.append(t)
         return tasks
     except Exception as e:
-        logger.error(f"Error fetching tasks for user {uid}: {str(e)}")
-        return []
+        logger.warning(f"Error fetching tasks from Firestore for user {uid}: {str(e)}")
+        return list(_in_memory_tasks.get(uid, []))
 
-def get_user_projects(uid: str):
+def get_user_projects(uid: str) -> List[Dict[str, Any]]:
     """
     Fetch all projects for a specific user.
     """
+    db = get_db()
+    if db is None:
+        return list(_in_memory_projects.get(uid, []))
     try:
-        db = get_db()
         docs = db.collection('users').document(uid).collection('projects').stream()
         projects = []
         for doc in docs:
@@ -47,15 +66,17 @@ def get_user_projects(uid: str):
             projects.append(p)
         return projects
     except Exception as e:
-        logger.error(f"Error fetching projects for user {uid}: {str(e)}")
-        return []
+        logger.warning(f"Error fetching projects from Firestore for user {uid}: {str(e)}")
+        return list(_in_memory_projects.get(uid, []))
 
-def get_user_goals(uid: str):
+def get_user_goals(uid: str) -> List[Dict[str, Any]]:
     """
     Fetch all goals for a specific user.
     """
+    db = get_db()
+    if db is None:
+        return list(_in_memory_goals.get(uid, []))
     try:
-        db = get_db()
         docs = db.collection('users').document(uid).collection('goals').stream()
         goals = []
         for doc in docs:
@@ -64,8 +85,8 @@ def get_user_goals(uid: str):
             goals.append(g)
         return goals
     except Exception as e:
-        logger.error(f"Error fetching goals for user {uid}: {str(e)}")
-        return []
+        logger.warning(f"Error fetching goals from Firestore for user {uid}: {str(e)}")
+        return list(_in_memory_goals.get(uid, []))
 
 def create_task_direct(
     uid: str,
@@ -76,178 +97,199 @@ def create_task_direct(
     deadline: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Directly insert a task into Firestore for a user.
+    Directly insert a task into Firestore or in-memory store for a user.
     """
-    try:
-        db = get_db()
-        task_id = str(uuid.uuid4())
-        
-        now = datetime.now(timezone.utc)
-        
-        # Parse deadline if provided
-        parsed_deadline = None
-        if deadline:
-            try:
-                parsed_deadline = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
-            except ValueError:
-                pass
+    task_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    parsed_deadline = None
+    if deadline:
+        try:
+            parsed_deadline = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+        except ValueError:
+            pass
 
-        task_data = {
-            "id": task_id,
-            "title": title,
-            "category": category,
-            "energyRequired": energy_required,
-            "estimatedDuration": estimated_duration,
-            "difficulty": 3,
-            "importance": 3,
-            "urgency": 3,
-            "status": "pending",
-            "postponeCount": 0,
-            "version": 1,
-            "createdAt": now,
-            "updatedAt": now
-        }
-        
-        if parsed_deadline:
-            task_data["deadline"] = parsed_deadline
+    task_data = {
+        "id": task_id,
+        "title": title,
+        "category": category,
+        "energyRequired": energy_required,
+        "estimatedDuration": estimated_duration,
+        "difficulty": 3,
+        "importance": 3,
+        "urgency": 3,
+        "status": "pending",
+        "postponeCount": 0,
+        "version": 1,
+        "createdAt": now,
+        "updatedAt": now
+    }
+    
+    if parsed_deadline:
+        task_data["deadline"] = parsed_deadline
 
-        db.collection('users').document(uid).collection('tasks').document(task_id).set(task_data)
-        logger.info(f"Successfully created task {task_id} for user {uid}")
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('tasks').document(task_id).set(task_data)
+            logger.info(f"Successfully created task {task_id} in Firestore for user {uid}")
+        except Exception as e:
+            logger.warning(f"Failed to write task to Firestore ({e}), stored in-memory.")
+            _in_memory_tasks.setdefault(uid, []).append(task_data)
+    else:
+        _in_memory_tasks.setdefault(uid, []).append(task_data)
+        logger.info(f"Created task {task_id} in local session for user {uid}")
+
+    # Serialize datetimes for response
+    task_data["createdAt"] = now.isoformat()
+    task_data["updatedAt"] = now.isoformat()
+    if parsed_deadline:
+        task_data["deadline"] = parsed_deadline.isoformat()
         
-        # Serialize datetimes for response
-        task_data["id"] = task_id
-        task_data["createdAt"] = now.isoformat()
-        task_data["updatedAt"] = now.isoformat()
-        if parsed_deadline:
-            task_data["deadline"] = parsed_deadline.isoformat()
-            
-        return task_data
-    except Exception as e:
-        logger.error(f"Error creating task for user {uid}: {str(e)}")
-        raise e
+    return task_data
 
 def update_task_direct(uid: str, task_id: str, updates: Dict[str, Any]) -> bool:
     """
-    Directly update a task in Firestore.
+    Directly update a task in Firestore or in-memory store.
     """
-    try:
-        db = get_db()
-        ref = db.collection('users').document(uid).collection('tasks').document(task_id)
-        
-        # Add timestamp & increment version
-        updates["updatedAt"] = datetime.now(timezone.utc)
-        updates["version"] = firestore.Increment(1)
-        
-        ref.update(updates)
-        return True
-    except Exception as e:
-        logger.error(f"Error updating task {task_id} for user {uid}: {str(e)}")
-        return False
+    db = get_db()
+    if db is not None:
+        try:
+            ref = db.collection('users').document(uid).collection('tasks').document(task_id)
+            updates["updatedAt"] = datetime.now(timezone.utc)
+            updates["version"] = firestore.Increment(1)
+            ref.update(updates)
+            return True
+        except Exception as e:
+            logger.warning(f"Error updating task in Firestore ({e}), attempting in-memory update.")
+
+    tasks = _in_memory_tasks.get(uid, [])
+    for t in tasks:
+        if t.get("id") == task_id:
+            t.update(updates)
+            t["updatedAt"] = datetime.now(timezone.utc).isoformat()
+            t["version"] = t.get("version", 1) + 1
+            return True
+    return False
 
 def create_goal_direct(uid: str, title: str, description: str = "", target_date: Optional[str] = None) -> Dict[str, Any]:
     """
-    Directly insert a goal into Firestore.
+    Directly insert a goal into Firestore or in-memory store.
     """
-    try:
-        db = get_db()
-        goal_id = f"goal_{int(datetime.now(timezone.utc).timestamp())}"
-        now = datetime.now(timezone.utc)
-        
-        parsed_target = None
-        if target_date:
-            try:
-                parsed_target = datetime.fromisoformat(target_date.replace('Z', '+00:00'))
-            except ValueError:
-                pass
+    goal_id = f"goal_{int(datetime.now(timezone.utc).timestamp())}"
+    now = datetime.now(timezone.utc)
+    
+    parsed_target = None
+    if target_date:
+        try:
+            parsed_target = datetime.fromisoformat(target_date.replace('Z', '+00:00'))
+        except ValueError:
+            pass
 
-        goal_data = {
-            "id": goal_id,
-            "title": title,
-            "description": description,
-            "status": "in_progress",
-            "roadmapGenerated": False,
-            "version": 1,
-            "createdAt": now
-        }
-        if parsed_target:
-            goal_data["targetDate"] = parsed_target
+    goal_data = {
+        "id": goal_id,
+        "title": title,
+        "description": description,
+        "status": "in_progress",
+        "roadmapGenerated": False,
+        "version": 1,
+        "createdAt": now
+    }
+    if parsed_target:
+        goal_data["targetDate"] = parsed_target
 
-        db.collection('users').document(uid).collection('goals').document(goal_id).set(goal_data)
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('goals').document(goal_id).set(goal_data)
+        except Exception as e:
+            logger.warning(f"Failed to write goal to Firestore ({e}), storing in memory.")
+            _in_memory_goals.setdefault(uid, []).append(goal_data)
+    else:
+        _in_memory_goals.setdefault(uid, []).append(goal_data)
+        logger.info(f"Created goal {goal_id} in local session for user {uid}")
+    
+    goal_data["createdAt"] = now.isoformat()
+    if parsed_target:
+        goal_data["targetDate"] = parsed_target.isoformat()
         
-        # Serialize
-        goal_data["createdAt"] = now.isoformat()
-        if parsed_target:
-            goal_data["targetDate"] = parsed_target.isoformat()
-            
-        return goal_data
-    except Exception as e:
-        logger.error(f"Error creating goal for user {uid}: {str(e)}")
-        raise e
+    return goal_data
 
 def save_chat_message(uid: str, role: str, message: str, context_snapshot: Optional[Dict[str, Any]] = None) -> bool:
     """
-    Save a chat message in the user's chat_history Firestore subcollection.
+    Save a chat message in the user's chat_history.
     """
-    try:
-        db = get_db()
-        msg_id = str(uuid.uuid4())
-        msg_data = {
-            "id": msg_id,
-            "role": role,
-            "message": message,
-            "timestamp": datetime.now(timezone.utc)
-        }
-        if context_snapshot:
-            msg_data["contextSnapshot"] = context_snapshot
-            
-        db.collection('users').document(uid).collection('chat_history').document(msg_id).set(msg_data)
-        return True
-    except Exception as e:
-        logger.error(f"Error saving chat message for user {uid}: {str(e)}")
-        return False
+    msg_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    msg_data = {
+        "id": msg_id,
+        "role": role,
+        "message": message,
+        "timestamp": now
+    }
+    if context_snapshot:
+        msg_data["contextSnapshot"] = context_snapshot
 
-def get_chat_history(uid: str, limit: int = 15):
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('chat_history').document(msg_id).set(msg_data)
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to save chat message to Firestore ({e}), storing in memory.")
+            _in_memory_chat.setdefault(uid, []).append(msg_data)
+            return True
+    else:
+        _in_memory_chat.setdefault(uid, []).append(msg_data)
+        return True
+
+def get_chat_history(uid: str, limit: int = 15) -> List[Dict[str, str]]:
     """
     Retrieve recent chat history for context memory.
     """
-    try:
-        db = get_db()
-        docs = db.collection('users').document(uid).collection('chat_history')\
-                 .order_by('timestamp', direction=firestore.Query.DESCENDING)\
-                 .limit(limit).stream()
-                 
-        messages = []
-        for doc in docs:
-            m = doc.to_dict()
-            messages.append({
-                "role": m.get("role", "user"),
-                "content": m.get("message", "")
-            })
-            
-        # Reverse to get chronological order
-        messages.reverse()
-        return messages
-    except Exception as e:
-        logger.error(f"Error fetching chat history for user {uid}: {str(e)}")
-        return []
+    db = get_db()
+    if db is not None:
+        try:
+            docs = db.collection('users').document(uid).collection('chat_history')\
+                     .order_by('timestamp', direction=firestore.Query.DESCENDING)\
+                     .limit(limit).stream()
+                     
+            messages = []
+            for doc in docs:
+                m = doc.to_dict()
+                messages.append({
+                    "role": m.get("role", "user"),
+                    "content": m.get("message", "")
+                })
+                
+            messages.reverse()
+            return messages
+        except Exception as e:
+            logger.warning(f"Error fetching chat history from Firestore ({e}), using in-memory.")
+
+    history = _in_memory_chat.get(uid, [])[-limit:]
+    return [{"role": m.get("role", "user"), "content": m.get("message", "")} for m in history]
 
 def save_brain_dump_doc(uid: str, transcript: str, task_ids: List[str], audio_url: str = "") -> str:
     """
     Save a record of a processed brain dump.
     """
-    try:
-        db = get_db()
-        bd_id = f"bd_{int(datetime.now(timezone.utc).timestamp())}"
-        db.collection('users').document(uid).collection('brain_dumps').document(bd_id).set({
-            "id": bd_id,
-            "uid": uid,
-            "rawTranscript": transcript,
-            "audioUrl": audio_url,
-            "extractedTaskIds": task_ids,
-            "processedAt": datetime.now(timezone.utc)
-        })
-        return bd_id
-    except Exception as e:
-        logger.error(f"Error saving brain dump: {e}")
-        return f"bd_{uuid.uuid4().hex[:12]}"
+    bd_id = f"bd_{int(datetime.now(timezone.utc).timestamp())}"
+    doc_data = {
+        "id": bd_id,
+        "uid": uid,
+        "rawTranscript": transcript,
+        "audioUrl": audio_url,
+        "extractedTaskIds": task_ids,
+        "processedAt": datetime.now(timezone.utc)
+    }
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('brain_dumps').document(bd_id).set(doc_data)
+            return bd_id
+        except Exception as e:
+            logger.warning(f"Error saving brain dump to Firestore: {e}")
+    return bd_id
+
 

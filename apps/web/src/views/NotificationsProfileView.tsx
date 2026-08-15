@@ -36,7 +36,7 @@ export const NotificationsProfileView: React.FC<NotificationsProfileViewProps> =
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <img
-              src={userProfile.avatar}
+              src={userProfile.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
               alt={userProfile.name}
               className="w-16 h-16 rounded-2xl object-cover ring-4 ring-indigo-500/30"
             />

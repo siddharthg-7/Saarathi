@@ -25,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const viewTitles: Record<ViewType, string> = {
     landing: 'Saarathi OS — Overview',
+    auth: 'Sign in to Saarathi',
     dashboard: 'Home Dashboard',
     today: "Today's Schedule",
     calendar: 'Calendar & Timeblocks',
@@ -122,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-2 p-1 rounded-xl hover:bg-surfaceSecondary transition-colors focus:outline-none"
           >
             <img
-              src={userProfile.avatar}
+              src={userProfile.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
               alt={userProfile.name}
               className="w-8 h-8 rounded-lg object-cover ring-2 ring-primary/20"
             />

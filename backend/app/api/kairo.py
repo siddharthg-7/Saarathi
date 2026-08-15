@@ -58,14 +58,11 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = None):
     await websocket.accept()
     
     try:
-        from app.core.security import auth
-        if token and token != "undefined" and token != "null" and token != "":
-            decoded_token = auth.verify_id_token(token)
-            uid = decoded_token["uid"]
-        else:
-            uid = "dev-user-uid"
+        from app.core.security import decode_token_payload
+        payload = decode_token_payload(token) if token else {}
+        uid = payload.get("uid") or payload.get("user_id") or payload.get("sub") or "dev-user-uid"
     except Exception as e:
-        logger.warning(f"WebSocket auth failed, using dev bypass: {e}")
+        logger.warning(f"WebSocket auth fallback: {e}")
         uid = "dev-user-uid"
 
     try:

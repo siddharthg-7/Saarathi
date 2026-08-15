@@ -6,16 +6,22 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
     // User profiles security rules
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId);
+      allow read, create, update: if isOwner(userId);
       allow delete: if false; // User accounts cannot be deleted directly without admin review
+    }
+
+    // All data owned by a user lives in per-user subcollections
+    // (tasks, projects, goals, ...). Scope every document under the
+    // user's path to the owner so cross-user access is impossible.
+    match /users/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
     }
 
     // User settings security rules
@@ -31,12 +37,6 @@ service cloud.firestore {
     // User sessions subcollection
     match /sessions/{userId}/user_sessions/{sessionId} {
       allow read, write: if isOwner(userId);
-    }
-
-    // Tasks collection security rules
-    match /tasks/{taskId} {
-      allow read, write: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
     }
   }
 }
