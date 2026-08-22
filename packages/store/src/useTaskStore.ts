@@ -23,7 +23,9 @@ import {
   createProjectDoc,
   deleteProjectDoc,
   resolveConflict,
+  NotificationService,
 } from '@saarathi/api';
+
 
 
 interface TaskState {
@@ -229,6 +231,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     set((state) => ({ tasks: [newTask, ...state.tasks] }));
     telemetryApi.logEvent({ taskId: newTask.id, eventType: 'CREATED' });
 
+    // Schedule reminder via notification engine
+    NotificationService.scheduleTaskReminder(newTask, activeUid || undefined).catch(() => {});
+
     // Sync to Firestore if authenticated
     if (activeUid) {
       try {
@@ -272,6 +277,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         )
         .concat(newRecurringTask ? [newRecurringTask] : []),
     }));
+
+    // Reconcile reminder status
+    if (nextStatus === 'completed') {
+      NotificationService.markTaskRemindersCompleted(taskId, activeUid || undefined).catch(() => {});
+    } else {
+      NotificationService.scheduleTaskReminder(targetTask, activeUid || undefined).catch(() => {});
+    }
+
+    if (newRecurringTask) {
+      NotificationService.scheduleTaskReminder(newRecurringTask, activeUid || undefined).catch(() => {});
+    }
 
     telemetryApi.logEvent({
       taskId,
@@ -317,6 +333,12 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)),
     }));
 
+    // Reschedule reminder
+    NotificationService.rescheduleTask(
+      { ...targetTask, ...updates },
+      activeUid || undefined
+    ).catch(() => {});
+
     telemetryApi.logEvent({
       taskId,
       eventType: 'POSTPONED',
@@ -344,6 +366,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           : t
       ),
     }));
+
+    if (status === 'completed') {
+      NotificationService.markTaskRemindersCompleted(taskId, activeUid || undefined).catch(() => {});
+    }
+
     if (activeUid) {
       await updateTaskDoc(activeUid, taskId, { status }, currentVersion).catch(() => {});
     }
@@ -361,6 +388,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           : t
       ),
     }));
+
+    if (targetTask && (updates.scheduledTime || updates.deadline)) {
+      NotificationService.rescheduleTask(
+        { ...targetTask, ...updates },
+        activeUid || undefined
+      ).catch(() => {});
+    }
+
     if (activeUid) {
       await updateTaskDoc(activeUid, taskId, updates, currentVersion).catch(() => {});
     }
@@ -373,10 +408,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }));
     telemetryApi.logEvent({ taskId, eventType: 'DELETED' });
 
+    // Cancel reminders
+    NotificationService.cancelTaskReminders(taskId, activeUid || undefined).catch(() => {});
+
     if (activeUid) {
       await deleteTaskDoc(activeUid, taskId).catch(() => {});
     }
   },
+
 
   addSubtask: async (taskId, title) => {
     const { tasks, activeUid } = get();

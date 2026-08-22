@@ -81,16 +81,26 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
-  // 1. Initialize real-time Firestore listeners for Tasks and Goals when authenticated
+  // 1. Initialize real-time Firestore listeners for Tasks, Goals, and Notifications when authenticated
   useEffect(() => {
     if (!isAuthenticated || !userProfile?.id) return;
     const unsubTasks = useTaskStore.getState().initTaskListener(userProfile.id);
     const unsubGoals = useHabitGoalStore.getState().initGoalListener(userProfile.id);
+    const unsubNotifications = useNotificationStore.getState().initNotificationListener(userProfile.id);
     return () => {
       unsubTasks();
       unsubGoals();
+      unsubNotifications();
     };
   }, [isAuthenticated, userProfile?.id]);
+
+  // 2. Evaluate Kairo smart reminder recommendations when tasks change
+  useEffect(() => {
+    if (isAuthenticated && tasks.length > 0) {
+      useNotificationStore.getState().evaluateSmartRules(tasks);
+    }
+  }, [isAuthenticated, tasks]);
+
 
   // Security: Route guard. Any view that is not public requires authentication.
   // If an unauthenticated user navigates (incl. by editing the URL hash) to a

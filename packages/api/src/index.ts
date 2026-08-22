@@ -8,4 +8,6 @@ export * from './firestoreService';
 export * from './storageService';
 export * from './taskFirestoreService';
 export * from './syncService';
+export * from './notifications';
 export * from './config/env';
+

@@ -308,6 +308,7 @@ export const initialNotifications: NotificationItem[] = [
     message:
       'Kairo calculated an 82% skip probability for your 06:00 PM workout. High fatigue detected on Monday evenings.',
     time: '10 mins ago',
+    timestamp: Date.now() - 10 * 60 * 1000,
     type: 'risk_alert',
     read: false,
     actionText: 'Reschedule to Tomorrow 7 AM',
@@ -318,6 +319,7 @@ export const initialNotifications: NotificationItem[] = [
     message:
       'Your optimal cognitive window (09:30 AM - 11:30 AM) is starting. Time to tackle Revise DBMS Relational Schema.',
     time: '30 mins ago',
+    timestamp: Date.now() - 30 * 60 * 1000,
     type: 'schedule_nudge',
     read: false,
     actionText: 'Start Focus Timer',
@@ -327,6 +329,7 @@ export const initialNotifications: NotificationItem[] = [
     title: '14-Day Streak Milestone Reached!',
     message: 'Congratulations! You completed your Morning Cold Shower habit 14 days in a row.',
     time: '2 hours ago',
+    timestamp: Date.now() - 2 * 60 * 60 * 1000,
     type: 'streak_celebration',
     read: true,
   },
@@ -335,10 +338,12 @@ export const initialNotifications: NotificationItem[] = [
     title: 'Kairo Daily Briefing Synthesized',
     message: 'Your morning productivity briefing is ready with sleep & focus correlation insights.',
     time: '3 hours ago',
+    timestamp: Date.now() - 3 * 60 * 60 * 1000,
     type: 'ai_insight',
     read: true,
   },
 ];
+
 
 export const initialKairoChatHistory: KairoMessage[] = [
   {

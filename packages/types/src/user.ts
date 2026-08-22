@@ -50,12 +50,3 @@ export interface UserSession {
   active: boolean;
 }
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  type: 'risk_alert' | 'schedule_nudge' | 'streak_celebration' | 'ai_insight';
-  read: boolean;
-  actionText?: string;
-}

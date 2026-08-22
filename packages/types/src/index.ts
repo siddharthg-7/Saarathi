@@ -19,3 +19,5 @@ export * from './task';
 export * from './user';
 export * from './kairo';
 export * from './analytics';
+export * from './notification';
+
