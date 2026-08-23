@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { KairoMessage } from '@saarathi/types';
 import { initialKairoChatHistory } from './data/initialData';
-import { kairoApi, auth, env } from '@saarathi/api';
+import { kairoApi, auth, env, TelemetryClient } from '@saarathi/api';
 
 interface KairoState {
   chatHistory: KairoMessage[];
@@ -15,6 +15,9 @@ export const useKairoStore = create<KairoState>((set) => ({
   isThinking: false,
 
   sendMessage: async (userMessage, context) => {
+    const startTime = Date.now();
+    const sessionId = `kairo_${Date.now()}`;
+
     const userMsgObj: KairoMessage = {
       id: `msg_${Date.now()}`,
       role: 'user',
@@ -35,6 +38,12 @@ export const useKairoStore = create<KairoState>((set) => ({
       chatHistory: [...state.chatHistory, userMsgObj, assistantMsgObj],
       isThinking: true,
     }));
+
+    // Emit message sent telemetry (data minimization: no message text)
+    TelemetryClient.trackKairo('kairo_message_sent', {
+      sessionId,
+      messageType: 'text',
+    }).catch(() => {});
 
     let token = '';
     try {
@@ -66,6 +75,7 @@ export const useKairoStore = create<KairoState>((set) => ({
 
       try {
         const restResponse = await kairoApi.sendMessage(userMessage, context);
+        const latency = Date.now() - startTime;
         set((state) => {
           const history = [...state.chatHistory];
           const lastMsg = history[history.length - 1];
@@ -81,6 +91,12 @@ export const useKairoStore = create<KairoState>((set) => ({
             isThinking: false,
           };
         });
+
+        TelemetryClient.trackKairo('kairo_response_received', {
+          sessionId,
+          responseLatencyMs: latency,
+          source: 'kairo-rest-engine',
+        }).catch(() => {});
       } catch (e) {
         console.warn('REST fallback also encountered error:', e);
         set((state) => {
@@ -95,6 +111,12 @@ export const useKairoStore = create<KairoState>((set) => ({
             isThinking: false,
           };
         });
+
+        TelemetryClient.trackKairo('kairo_response_received', {
+          sessionId,
+          responseLatencyMs: Date.now() - startTime,
+          source: 'kairo-local-engine',
+        }).catch(() => {});
       }
     };
 
@@ -125,6 +147,7 @@ export const useKairoStore = create<KairoState>((set) => ({
               return { chatHistory: history };
             });
           } else if (data.type === 'done') {
+            const latency = Date.now() - startTime;
             set((state) => {
               const history = [...state.chatHistory];
               const lastMsg = history[history.length - 1];
@@ -144,6 +167,13 @@ export const useKairoStore = create<KairoState>((set) => ({
                 isThinking: false,
               };
             });
+
+            TelemetryClient.trackKairo('kairo_response_received', {
+              sessionId,
+              responseLatencyMs: latency,
+              source: 'kairo-stream-engine',
+            }).catch(() => {});
+
             ws.close();
           }
         } catch (e) {

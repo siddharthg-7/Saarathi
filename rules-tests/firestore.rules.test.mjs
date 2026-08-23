@@ -76,6 +76,22 @@ async function main() {
   await checkAllow('owner create own goal', setDoc(doc(ownerDb, 'users', OWNER, 'goals', 'g1'), { uid: OWNER }));
   await checkAllow('owner read own goal', getDoc(doc(ownerDb, 'users', OWNER, 'goals', 'g1')));
 
+  // Telemetry (users/{uid}/telemetry/{id})
+  await checkAllow('owner create own telemetry', setDoc(doc(ownerDb, 'users', OWNER, 'telemetry', 'evt1'), { userId: OWNER, eventType: 'task_created' }));
+  await checkAllow('owner read own telemetry', getDoc(doc(ownerDb, 'users', OWNER, 'telemetry', 'evt1')));
+
+  // Analytics Daily (users/{uid}/analytics_daily/{date})
+  await checkAllow('owner create own daily analytics', setDoc(doc(ownerDb, 'users', OWNER, 'analytics_daily', '2026-08-23'), { userId: OWNER, tasksCompleted: 5 }));
+  await checkAllow('owner read own daily analytics', getDoc(doc(ownerDb, 'users', OWNER, 'analytics_daily', '2026-08-23')));
+
+  // Analytics Weekly (users/{uid}/analytics_weekly/{weekId})
+  await checkAllow('owner create own weekly analytics', setDoc(doc(ownerDb, 'users', OWNER, 'analytics_weekly', '2026-W34'), { userId: OWNER, weeklyTasksCompleted: 42 }));
+  await checkAllow('owner read own weekly analytics', getDoc(doc(ownerDb, 'users', OWNER, 'analytics_weekly', '2026-W34')));
+
+  // Analytics Monthly (users/{uid}/analytics_monthly/{monthId})
+  await checkAllow('owner create own monthly analytics', setDoc(doc(ownerDb, 'users', OWNER, 'analytics_monthly', '2026-08'), { userId: OWNER, totalCompletedTasks: 156 }));
+  await checkAllow('owner read own monthly analytics', getDoc(doc(ownerDb, 'users', OWNER, 'analytics_monthly', '2026-08')));
+
   // Settings (settings/{uid})
   await checkAllow('owner write own settings', setDoc(doc(ownerDb, 'settings', OWNER), { uid: OWNER, theme: 'dark' }));
   await checkAllow('owner read own settings', getDoc(doc(ownerDb, 'settings', OWNER)));
@@ -95,6 +111,10 @@ async function main() {
   await checkDeny('other write owner task', setDoc(doc(otherDb, 'users', OWNER, 'tasks', 't1'), { uid: OWNER }));
   await checkDeny('other read owner project', getDoc(doc(otherDb, 'users', OWNER, 'projects', 'p1')));
   await checkDeny('other read owner goal', getDoc(doc(otherDb, 'users', OWNER, 'goals', 'g1')));
+  await checkDeny('other read owner telemetry', getDoc(doc(otherDb, 'users', OWNER, 'telemetry', 'evt1')));
+  await checkDeny('other write owner telemetry', setDoc(doc(otherDb, 'users', OWNER, 'telemetry', 'evt1'), { userId: OWNER }));
+  await checkDeny('other read owner daily analytics', getDoc(doc(otherDb, 'users', OWNER, 'analytics_daily', '2026-08-23')));
+  await checkDeny('other write owner daily analytics', setDoc(doc(otherDb, 'users', OWNER, 'analytics_daily', '2026-08-23'), { userId: OWNER }));
   await checkDeny('other read owner settings', getDoc(doc(otherDb, 'settings', OWNER)));
   await checkDeny('other read owner device', getDoc(doc(otherDb, 'devices', OWNER, 'user_devices', 'd1')));
   await checkDeny('other read owner session', getDoc(doc(otherDb, 'sessions', OWNER, 'user_sessions', 's1')));
@@ -108,6 +128,7 @@ async function main() {
   // Unauthenticated access
   await checkDeny('anon read owner profile', getDoc(doc(anonDb, 'users', OWNER)));
   await checkDeny('anon read owner task', getDoc(doc(anonDb, 'users', OWNER, 'tasks', 't1')));
+  await checkDeny('anon read owner telemetry', getDoc(doc(anonDb, 'users', OWNER, 'telemetry', 'evt1')));
   await checkDeny('anon write profile', setDoc(doc(anonDb, 'users', 'anon'), { uid: 'anon' }));
   await checkDeny('anon read settings', getDoc(doc(anonDb, 'settings', OWNER)));
 

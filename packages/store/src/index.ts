@@ -3,4 +3,5 @@ export * from './useHabitGoalStore';
 export * from './useKairoStore';
 export * from './useNotificationStore';
 export * from './useTaskStore';
+export * from './useAnalyticsStore';
 export * from './data/initialData';

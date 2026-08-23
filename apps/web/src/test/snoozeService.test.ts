@@ -9,7 +9,7 @@ describe('SnoozeService', () => {
 
   const sampleReminder: Reminder = {
     id: 'rem_12345',
-    userId: 'user_123',
+    userId: '',
     taskId: 'task_123',
     title: 'Study System Design',
     body: 'Review distributed caching',

@@ -75,7 +75,7 @@ export class SnoozeService {
 
     // 3. Persist to Firestore if authenticated
     if (reminder.userId) {
-      await updateReminderDoc(reminder.userId, reminder.id, {
+      updateReminderDoc(reminder.userId, reminder.id, {
         status: 'snoozed',
         scheduledAt: newScheduledAt,
         snoozedUntil: newScheduledAt,

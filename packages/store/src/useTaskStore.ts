@@ -13,6 +13,7 @@ import {
 import { initialTasks } from './data/initialData';
 import {
   telemetryApi,
+  TelemetryClient,
   mlApi,
   createTaskDoc,
   updateTaskDoc,
@@ -230,6 +231,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     // Optimistic local update
     set((state) => ({ tasks: [newTask, ...state.tasks] }));
     telemetryApi.logEvent({ taskId: newTask.id, eventType: 'CREATED' });
+    TelemetryClient.trackTask('task_created', newTask.id, {
+      title,
+      category,
+      energyRequired,
+      priority,
+      estimatedDuration: newTask.estimatedDuration,
+      scheduledTime,
+      deadline,
+    }, activeUid || undefined).catch(() => {});
 
     // Schedule reminder via notification engine
     NotificationService.scheduleTaskReminder(newTask, activeUid || undefined).catch(() => {});
@@ -294,6 +304,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       eventType: nextStatus === 'completed' ? 'COMPLETED' : 'POSTPONED',
     });
 
+    TelemetryClient.trackTask(
+      nextStatus === 'completed' ? 'task_completed' : 'task_reopened',
+      taskId,
+      {
+        category: targetTask.category,
+        priority: targetTask.priority,
+        completedOnTime: targetTask.postponeCount === 0,
+        postponeCount: targetTask.postponeCount,
+        estimatedDuration: targetTask.estimatedDuration,
+      },
+      activeUid || undefined
+    ).catch(() => {});
+
     if (activeUid) {
       try {
         await updateTaskDoc(activeUid, taskId, { status: nextStatus }, currentVersion);
@@ -344,6 +367,28 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       eventType: 'POSTPONED',
       currentPostponeCount: nextPostponeCount,
     });
+
+    TelemetryClient.trackTask(
+      'task_postponed',
+      taskId,
+      {
+        category: targetTask.category,
+        postponeCount: nextPostponeCount,
+        scheduledTime: updates.scheduledTime,
+      },
+      activeUid || undefined
+    ).catch(() => {});
+
+    TelemetryClient.trackTask(
+      'task_rescheduled',
+      taskId,
+      {
+        category: targetTask.category,
+        rescheduleCount: nextPostponeCount,
+        reason: 'Postponed by user',
+      },
+      activeUid || undefined
+    ).catch(() => {});
 
     if (activeUid) {
       try {
@@ -402,11 +447,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   deleteTask: async (taskId) => {
-    const { activeUid } = get();
+    const { tasks, activeUid } = get();
+    const targetTask = tasks.find((t) => t.id === taskId);
     set((state) => ({
       tasks: state.tasks.filter((t) => t.id !== taskId),
     }));
     telemetryApi.logEvent({ taskId, eventType: 'DELETED' });
+
+    TelemetryClient.trackTask(
+      'task_deleted',
+      taskId,
+      { category: targetTask?.category },
+      activeUid || undefined
+    ).catch(() => {});
 
     // Cancel reminders
     NotificationService.cancelTaskReminders(taskId, activeUid || undefined).catch(() => {});

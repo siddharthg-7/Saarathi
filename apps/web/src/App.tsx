@@ -8,6 +8,7 @@ import { useTaskStore } from '@saarathi/store';
 import { useKairoStore } from '@saarathi/store';
 import { useHabitGoalStore } from '@saarathi/store';
 import { useNotificationStore } from '@saarathi/store';
+import { useAnalyticsStore } from '@saarathi/store';
 import { subscribeToAuthState } from '@saarathi/api';
 import type { UserProfile } from '@saarathi/types';
 import { ThemeProvider } from './context/ThemeContext';
@@ -55,6 +56,17 @@ function AppContent() {
   // Notification Store
   const { notifications, markAsRead, clearAll } = useNotificationStore();
 
+  // Analytics Store
+  const {
+    analyticsData,
+    timeRange,
+    setTimeRange,
+    logMoodAndEnergy,
+    flushTelemetryQueue,
+    queueStatus,
+    refreshAnalytics,
+  } = useAnalyticsStore();
+
   // Local state for modals & sidebar
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
@@ -81,20 +93,29 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
-  // 1. Initialize real-time Firestore listeners for Tasks, Goals, and Notifications when authenticated
+  // 1. Initialize real-time Firestore listeners for Tasks, Goals, Notifications, and Analytics when authenticated
   useEffect(() => {
     if (!isAuthenticated || !userProfile?.id) return;
     const unsubTasks = useTaskStore.getState().initTaskListener(userProfile.id);
     const unsubGoals = useHabitGoalStore.getState().initGoalListener(userProfile.id);
     const unsubNotifications = useNotificationStore.getState().initNotificationListener(userProfile.id);
+    const unsubAnalytics = useAnalyticsStore.getState().initAnalyticsListener(userProfile.id);
     return () => {
       unsubTasks();
       unsubGoals();
       unsubNotifications();
+      unsubAnalytics();
     };
   }, [isAuthenticated, userProfile?.id]);
 
-  // 2. Evaluate Kairo smart reminder recommendations when tasks change
+  // 2. Refresh analytics matrix when tasks or habits change
+  useEffect(() => {
+    if (tasks.length > 0 || habits.length > 0) {
+      refreshAnalytics(tasks, notifications as any, habits);
+    }
+  }, [tasks, habits, notifications, refreshAnalytics]);
+
+  // 3. Evaluate Kairo smart reminder recommendations when tasks change
   useEffect(() => {
     if (isAuthenticated && tasks.length > 0) {
       useNotificationStore.getState().evaluateSmartRules(tasks);
@@ -210,7 +231,16 @@ function AppContent() {
           />
         );
       case 'analytics':
-        return <AnalyticsView analytics={initialAnalytics} />;
+        return (
+          <AnalyticsView
+            analytics={analyticsData}
+            timeRange={timeRange}
+            onSelectTimeRange={setTimeRange}
+            onLogMoodEnergy={logMoodAndEnergy}
+            onFlushQueue={flushTelemetryQueue}
+            queueStatus={queueStatus}
+          />
+        );
       case 'braindump':
         return <BrainDumpView onAddTask={addTask} />;
       case 'focus':

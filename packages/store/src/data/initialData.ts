@@ -279,9 +279,9 @@ export const initialAnalytics: AnalyticsData = {
   procrastinationSkipAverage: 14.2,
   habitStreakDays: 14,
   heatmap: Array.from({ length: 30 }).map((_, i) => ({
-    date: `2026-07-${String(i + 1).padStart(2, '0')}`,
-    count: Math.floor(Math.random() * 6) + 1,
-    level: Math.floor(Math.random() * 5) as 0 | 1 | 2 | 3 | 4,
+    date: `2026-08-${String(i + 1).padStart(2, '0')}`,
+    count: (i % 6) + 1,
+    level: ((i % 5)) as 0 | 1 | 2 | 3 | 4,
   })),
   weeklyCompletion: [
     { day: 'Mon', completed: 8, postponed: 2 },
@@ -293,12 +293,175 @@ export const initialAnalytics: AnalyticsData = {
     { day: 'Sun', completed: 5, postponed: 1 },
   ],
   categoryDistribution: [
-    { category: 'Coding', count: 18, color: '#6366F1' },
-    { category: 'College', count: 12, color: '#3B82F6' },
-    { category: 'Fitness', count: 8, color: '#10B981' },
-    { category: 'Personal', count: 7, color: '#EC4899' },
-    { category: 'Mindset', count: 4, color: '#8B5CF6' },
+    { category: 'Coding', count: 18, focusMinutes: 540, completedTasks: 12, color: '#6366F1' },
+    { category: 'College', count: 12, focusMinutes: 360, completedTasks: 8, color: '#3B82F6' },
+    { category: 'Fitness', count: 8, focusMinutes: 240, completedTasks: 5, color: '#10B981' },
+    { category: 'Personal', count: 7, focusMinutes: 180, completedTasks: 6, color: '#EC4899' },
+    { category: 'Mindset', count: 4, focusMinutes: 120, completedTasks: 3, color: '#8B5CF6' },
   ],
+  daily: {
+    userId: 'usr_rahul_001',
+    date: '2026-08-23',
+    timezone: 'Asia/Kolkata',
+    tasksPlanned: 6,
+    tasksCompleted: 5,
+    tasksCompletedOnTime: 4,
+    tasksOverdue: 0,
+    tasksRescheduled: 1,
+    completionRate: 83,
+    focusMinutes: 195,
+    focusSessions: 4,
+    focusCompletionRate: 100,
+    interruptionCount: 1,
+    remindersSent: 4,
+    remindersOpened: 3,
+    remindersSnoozed: 1,
+    remindersIgnored: 0,
+    reminderResponseRate: 75,
+    kairoSessions: 2,
+    kairoMessages: 6,
+    energyAverage: 2.5,
+    moodAverage: 4.2,
+    habitsCompleted: 4,
+    habitsMissed: 0,
+    habitCompletionRate: 100,
+    productivityScore: 88,
+  },
+  weekly: {
+    userId: 'usr_rahul_001',
+    weekId: '2026-W34',
+    startDate: '2026-08-17',
+    endDate: '2026-08-23',
+    timezone: 'Asia/Kolkata',
+    weeklyTasksCompleted: 42,
+    weeklyTasksPlanned: 52,
+    weeklyCompletionRate: 81,
+    weeklyFocusMinutes: 980,
+    weeklyFocusSessions: 19,
+    weeklyReminderResponseRate: 85,
+    weeklyHabitCompletionRate: 88,
+    weeklyRescheduleRate: 12,
+    weeklyKairoUsage: 16,
+    comparisonVsLastWeek: {
+      tasksCompletedChangePercent: 10.5,
+      completionRateChangePercent: 6.2,
+      focusMinutesChangePercent: 14.8,
+      habitCompletionChangePercent: 4.0,
+    },
+    bestObservedPeriod: 'Tuesday 09:00 AM – 11:30 AM',
+    mostRescheduledCategory: 'Coding',
+    weekdayBreakdown: [
+      { dayIndex: 1, dayName: 'Monday', shortName: 'Mon', completedTasks: 8, plannedTasks: 10, completionRate: 80, focusMinutes: 160, averageTaskDurationMinutes: 38, rescheduleRate: 20 },
+      { dayIndex: 2, dayName: 'Tuesday', shortName: 'Tue', completedTasks: 10, plannedTasks: 11, completionRate: 91, focusMinutes: 210, averageTaskDurationMinutes: 42, rescheduleRate: 9 },
+      { dayIndex: 3, dayName: 'Wednesday', shortName: 'Wed', completedTasks: 9, plannedTasks: 10, completionRate: 90, focusMinutes: 180, averageTaskDurationMinutes: 36, rescheduleRate: 10 },
+      { dayIndex: 4, dayName: 'Thursday', shortName: 'Thu', completedTasks: 7, plannedTasks: 10, completionRate: 70, focusMinutes: 140, averageTaskDurationMinutes: 35, rescheduleRate: 30 },
+      { dayIndex: 5, dayName: 'Friday', shortName: 'Fri', completedTasks: 11, plannedTasks: 11, completionRate: 100, focusMinutes: 230, averageTaskDurationMinutes: 45, rescheduleRate: 0 },
+      { dayIndex: 6, dayName: 'Saturday', shortName: 'Sat', completedTasks: 6, plannedTasks: 8, completionRate: 75, focusMinutes: 120, averageTaskDurationMinutes: 30, rescheduleRate: 25 },
+      { dayIndex: 7, dayName: 'Sunday', shortName: 'Sun', completedTasks: 5, plannedTasks: 6, completionRate: 83, focusMinutes: 90, averageTaskDurationMinutes: 25, rescheduleRate: 17 },
+    ],
+  },
+  monthly: {
+    userId: 'usr_rahul_001',
+    monthId: '2026-08',
+    startDate: '2026-08-01',
+    endDate: '2026-08-31',
+    timezone: 'Asia/Kolkata',
+    totalCompletedTasks: 156,
+    totalPlannedTasks: 192,
+    completionRate: 81,
+    focusMinutes: 4120,
+    focusSessions: 78,
+    habitConsistencyRate: 87,
+    reminderResponseRate: 84,
+    reschedulingRate: 12,
+    kairoTotalInteractions: 86,
+    energyPatterns: [
+      { energyLevel: 'high', tasksCount: 24, completionRate: 88, avgFocusMinutes: 52, description: 'Tasks completed during high-energy periods achieved an 88% completion rate.' },
+      { energyLevel: 'medium', tasksCount: 18, completionRate: 72, avgFocusMinutes: 38, description: 'Tasks completed during medium-energy periods achieved a 72% completion rate.' },
+      { energyLevel: 'low', tasksCount: 12, completionRate: 58, avgFocusMinutes: 22, description: 'Tasks completed during low-energy periods achieved a 58% completion rate.' },
+    ],
+    reschedulingStats: {
+      totalRescheduled: 14,
+      rescheduleRate: 12,
+      averageReschedulesPerTask: 0.28,
+      mostRescheduledCategory: 'Coding',
+      mostRescheduledWeekday: 'Monday',
+      mostRescheduledHour: 18,
+      categoryBreakdown: [
+        { category: 'Coding', count: 7 },
+        { category: 'Fitness', count: 4 },
+        { category: 'Personal', count: 2 },
+        { category: 'College', count: 1 },
+      ],
+    },
+    kairoStats: {
+      totalSessions: 28,
+      totalMessages: 86,
+      avgMessagesPerSession: 3.1,
+      avgResponseLatencyMs: 420,
+      tasksCreatedViaKairo: 14,
+      tasksModifiedViaKairo: 8,
+      brainDumpsProcessed: 5,
+      recommendationsShown: 18,
+      recommendationsAccepted: 15,
+      recommendationsRejected: 3,
+      recommendationAcceptanceRate: 83,
+    },
+    comparisonVsLastMonth: {
+      tasksCompletedChangePercent: 14.2,
+      completionRateChangePercent: 7.5,
+      focusMinutesChangePercent: 16.3,
+    },
+    descriptiveInsights: [
+      'Your monthly task completion rate improved 7.5% over the previous period.',
+      'You completed your highest volume of focus sessions between 09:30 AM and 11:30 AM.',
+      'Coding tasks had the highest postponement frequency on Monday evenings.',
+      'Morning Cold Shower and Daily Coding habits showed 100% adherence on weekdays.',
+    ],
+  },
+  heatmapGrid: {
+    cells: (() => {
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const cells = [];
+      const peakHours = [9, 10, 11, 14, 15, 16, 19];
+      for (let d = 0; d < 7; d++) {
+        for (let h = 0; h < 24; h++) {
+          const isWeekday = d >= 1 && d <= 5;
+          const isPeak = isWeekday && peakHours.includes(h);
+          const count = isPeak ? ((h + d) % 4) + 1 : (d % 3 === 0 && h === 20 ? 1 : 0);
+          let intensity = 0;
+          if (count >= 4) intensity = 4;
+          else if (count >= 3) intensity = 3;
+          else if (count >= 2) intensity = 2;
+          else if (count >= 1) intensity = 1;
+          cells.push({
+            dayOfWeek: d,
+            dayName: dayNames[d],
+            hour: h,
+            intensity,
+            eventCount: count,
+            focusMinutes: count * 25,
+          });
+        }
+      }
+      return cells;
+    })(),
+    maxCount: 4,
+    totalActiveHours: 35,
+  },
+  coldStartStatus: {
+    phase: 'long_term_trends',
+    daysOfData: 35,
+    totalEventsCount: 88,
+    isUnlocked: {
+      overview: true,
+      trends: true,
+      heatmap: true,
+      patterns: true,
+      kairo: true,
+    },
+    guidanceMessage: 'Full behavioral analytics unlocked based on your active productivity sessions.',
+  },
 };
 
 export const initialNotifications: NotificationItem[] = [

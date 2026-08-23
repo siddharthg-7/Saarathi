@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Habit, Goal, SyncStatus } from '@saarathi/types';
 import { initialHabits, initialGoals } from './data/initialData';
-import { createGoalDoc, subscribeToGoals, resolveConflict } from '@saarathi/api';
+import { createGoalDoc, subscribeToGoals, resolveConflict, TelemetryClient } from '@saarathi/api';
 
 interface HabitGoalState {
   habits: Habit[];
@@ -52,14 +52,22 @@ export const useHabitGoalStore = create<HabitGoalState>((set, get) => ({
   },
 
   toggleHabitDay: (habitId, dayIndex) => {
+    const { activeUid } = get();
+    let isCompleted = false;
+    let habitTitle = '';
+    let updatedStreak = 0;
+
     set((state) => ({
       habits: state.habits.map((h) => {
         if (h.id === habitId) {
           const newActive = [...h.activeDays];
           newActive[dayIndex] = !newActive[dayIndex];
+          isCompleted = newActive[dayIndex];
+          habitTitle = h.title;
           const newStreak = newActive[dayIndex]
             ? h.streakCount + 1
             : Math.max(0, h.streakCount - 1);
+          updatedStreak = newStreak;
           return {
             ...h,
             activeDays: newActive,
@@ -71,9 +79,21 @@ export const useHabitGoalStore = create<HabitGoalState>((set, get) => ({
         return h;
       }),
     }));
+
+    TelemetryClient.trackHabit(
+      isCompleted ? 'habit_completed' : 'habit_missed',
+      habitId,
+      {
+        title: habitTitle,
+        streakCount: updatedStreak,
+        dayIndex,
+      },
+      activeUid || undefined
+    ).catch(() => {});
   },
 
   addHabit: (title, category, color) => {
+    const { activeUid } = get();
     const newHabit: Habit = {
       id: `hab_${Date.now()}`,
       title,
@@ -88,6 +108,17 @@ export const useHabitGoalStore = create<HabitGoalState>((set, get) => ({
       syncStatus: 'pending' as SyncStatus,
     };
     set((state) => ({ habits: [...state.habits, newHabit] }));
+
+    TelemetryClient.trackHabit(
+      'habit_created',
+      newHabit.id,
+      {
+        title,
+        category,
+        targetDaysPerWeek: 7,
+      },
+      activeUid || undefined
+    ).catch(() => {});
   },
 
   addGoal: async (newGoal) => {

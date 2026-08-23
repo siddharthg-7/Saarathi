@@ -13,6 +13,7 @@ import {
   ListTodo,
 } from 'lucide-react';
 import { Task } from '@saarathi/types';
+import { TelemetryClient } from '@saarathi/api';
 
 interface FocusModeViewProps {
   tasks: Task[];
@@ -28,6 +29,10 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({ tasks, onToggleTas
   const [isMuted, setIsMuted] = useState(false);
   const [interruptions, setInterruptions] = useState(0);
 
+  const sessionIdRef = useRef<string>(`foc_${Date.now()}`);
+  const plannedSecondsRef = useRef<number>(25 * 60);
+  const actualSecondsRef = useRef<number>(0);
+
   const activeTask = tasks.find((t) => t.id === selectedTaskId) || tasks[0];
 
   useEffect(() => {
@@ -35,19 +40,97 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({ tasks, onToggleTas
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
+        actualSecondsRef.current += 1;
       }, 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && isRunning) {
       setIsRunning(false);
+      // Focus block completed
+      TelemetryClient.trackFocus('focus_completed', sessionIdRef.current, {
+        taskId: activeTask?.id,
+        taskTitle: activeTask?.title,
+        mode: timerMode,
+        plannedDurationMinutes: Math.round(plannedSecondsRef.current / 60),
+        actualDurationSeconds: actualSecondsRef.current,
+        interruptionCount: interruptions,
+        ambientSound: !isMuted ? ambientSound : 'None',
+        completionStatus: 'completed',
+      }).catch(() => {});
     }
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
+  }, [isRunning, timeLeft, activeTask, timerMode, interruptions, isMuted, ambientSound]);
+
+  const handleStartPause = () => {
+    if (!isRunning) {
+      // Starting / resuming
+      setIsRunning(true);
+      const isInitialStart = actualSecondsRef.current === 0;
+      TelemetryClient.trackFocus(
+        isInitialStart ? 'focus_started' : 'focus_resumed',
+        sessionIdRef.current,
+        {
+          taskId: activeTask?.id,
+          taskTitle: activeTask?.title,
+          mode: timerMode,
+          plannedDurationMinutes: Math.round(plannedSecondsRef.current / 60),
+          actualDurationSeconds: actualSecondsRef.current,
+          ambientSound: !isMuted ? ambientSound : 'None',
+        }
+      ).catch(() => {});
+    } else {
+      // Pausing
+      setIsRunning(false);
+      TelemetryClient.trackFocus('focus_paused', sessionIdRef.current, {
+        taskId: activeTask?.id,
+        mode: timerMode,
+        actualDurationSeconds: actualSecondsRef.current,
+      }).catch(() => {});
+    }
+  };
+
+  const handleReset = () => {
+    if (actualSecondsRef.current > 30) {
+      TelemetryClient.trackFocus('focus_abandoned', sessionIdRef.current, {
+        taskId: activeTask?.id,
+        mode: timerMode,
+        plannedDurationMinutes: Math.round(plannedSecondsRef.current / 60),
+        actualDurationSeconds: actualSecondsRef.current,
+        completionStatus: 'abandoned',
+      }).catch(() => {});
+    }
+    setIsRunning(false);
+    sessionIdRef.current = `foc_${Date.now()}`;
+    actualSecondsRef.current = 0;
+    if (timerMode === 'work') setTimeLeft(25 * 60);
+    if (timerMode === 'shortBreak') setTimeLeft(5 * 60);
+    if (timerMode === 'longBreak') setTimeLeft(15 * 60);
+  };
 
   const handleSwitchMode = (mode: 'work' | 'shortBreak' | 'longBreak') => {
     setTimerMode(mode);
     setIsRunning(false);
-    if (mode === 'work') setTimeLeft(25 * 60);
-    if (mode === 'shortBreak') setTimeLeft(5 * 60);
-    if (mode === 'longBreak') setTimeLeft(15 * 60);
+    sessionIdRef.current = `foc_${Date.now()}`;
+    actualSecondsRef.current = 0;
+    if (mode === 'work') {
+      setTimeLeft(25 * 60);
+      plannedSecondsRef.current = 25 * 60;
+    }
+    if (mode === 'shortBreak') {
+      setTimeLeft(5 * 60);
+      plannedSecondsRef.current = 5 * 60;
+    }
+    if (mode === 'longBreak') {
+      setTimeLeft(15 * 60);
+      plannedSecondsRef.current = 15 * 60;
+    }
+  };
+
+  const handleLogInterruption = () => {
+    const nextCount = interruptions + 1;
+    setInterruptions(nextCount);
+    TelemetryClient.trackFocus('focus_interrupted', sessionIdRef.current, {
+      taskId: activeTask?.id,
+      interruptionCount: nextCount,
+    }).catch(() => {});
   };
 
   const formatTime = (secs: number) => {
@@ -132,7 +215,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({ tasks, onToggleTas
         {/* Play/Pause Controls */}
         <div className="flex items-center justify-center gap-4 pt-2">
           <button
-            onClick={() => setIsRunning(!isRunning)}
+            onClick={handleStartPause}
             className={`w-16 h-16 rounded-2xl font-bold flex items-center justify-center text-white shadow-2xl transition-all hover:scale-105 ${
               isRunning
                 ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/30'
@@ -143,10 +226,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({ tasks, onToggleTas
           </button>
 
           <button
-            onClick={() => {
-              setIsRunning(false);
-              setTimeLeft(25 * 60);
-            }}
+            onClick={handleReset}
             className="p-4 rounded-2xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-white/10 transition-colors"
             title="Reset Timer"
           >
@@ -218,7 +298,7 @@ export const FocusModeView: React.FC<FocusModeViewProps> = ({ tasks, onToggleTas
 
           <div className="flex gap-2">
             <button
-              onClick={() => setInterruptions((prev) => prev + 1)}
+              onClick={handleLogInterruption}
               className="flex-1 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition-all"
             >
               +1 Log Distraction

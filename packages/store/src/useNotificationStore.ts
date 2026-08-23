@@ -19,6 +19,7 @@ import {
   saveNotificationPreferences,
   DEFAULT_NOTIFICATION_PREFERENCES,
   SnoozeOption,
+  TelemetryClient,
 } from '@saarathi/api';
 import { initialNotifications } from './data/initialData';
 
@@ -140,11 +141,19 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: async (id: string) => {
     const { notifications, activeUid } = get();
+    const target = notifications.find((n) => n.id === id);
     const updated = notifications.map((n) =>
       n.id === id ? { ...n, read: true, readAt: new Date().toISOString() } : n
     );
     const unread = updated.filter((n) => !n.read).length;
     set({ notifications: updated, unreadCount: unread });
+
+    if (target) {
+      TelemetryClient.trackReminder('reminder_opened', target.reminderId || target.id, {
+        taskId: target.taskId,
+        reminderType: target.type,
+      }, activeUid || undefined).catch(() => {});
+    }
 
     if (activeUid) {
       await updateNotificationDoc(activeUid, id, {
@@ -238,7 +247,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   snoozeReminder: async (reminderId: string, option: SnoozeOption) => {
-    const { reminders, preferences } = get();
+    const { reminders, preferences, activeUid } = get();
     const target = reminders.find((r) => r.id === reminderId);
     if (!target) return;
 
@@ -251,6 +260,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set((state) => ({
       reminders: state.reminders.map((r) => (r.id === reminderId ? updatedReminder : r)),
     }));
+
+    TelemetryClient.trackReminder('reminder_snoozed', reminderId, {
+      taskId: target.taskId,
+      snoozeMinutes: typeof option === 'number' ? option : parseInt(String(option), 10) || 10,
+      snoozeCount: updatedReminder.snoozeCount,
+    }, activeUid || undefined).catch(() => {});
   },
 
   evaluateSmartRules: (tasks: Task[], userEnergy: EnergyLevel = 'Medium') => {
@@ -274,7 +289,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   acceptRecommendation: (recId, onApplyReschedule) => {
-    const { recommendations } = get();
+    const { recommendations, activeUid } = get();
     const target = recommendations.find((r) => r.id === recId);
     if (target && onApplyReschedule) {
       onApplyReschedule(target.taskId, target.recommendedTime);
@@ -282,16 +297,26 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({
       recommendations: recommendations.filter((r) => r.id !== recId),
     });
+
+    TelemetryClient.trackKairo('kairo_recommendation_accepted', {
+      recommendationId: recId,
+      taskCreatedId: target?.taskId,
+    }, activeUid || undefined).catch(() => {});
   },
 
   dismissRecommendation: (recId) => {
+    const { activeUid } = get();
     set((state) => ({
       recommendations: state.recommendations.filter((r) => r.id !== recId),
     }));
+
+    TelemetryClient.trackKairo('kairo_recommendation_rejected', {
+      recommendationId: recId,
+    }, activeUid || undefined).catch(() => {});
   },
 
   executeAction: async (notificationId, actionId, onTaskComplete) => {
-    const { notifications, reminders, preferences } = get();
+    const { notifications, activeUid } = get();
     const targetNotif = notifications.find((n) => n.id === notificationId);
     if (!targetNotif) return;
 
@@ -304,13 +329,21 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         onTaskComplete(targetNotif.taskId);
       }
       if (targetNotif.reminderId) {
-        await NotificationService.markTaskRemindersCompleted(targetNotif.taskId, get().activeUid || undefined);
+        await NotificationService.markTaskRemindersCompleted(targetNotif.taskId, activeUid || undefined);
       }
+      TelemetryClient.trackReminder('reminder_completed', targetNotif.reminderId || notificationId, {
+        taskId: targetNotif.taskId,
+        completedViaAction: true,
+      }, activeUid || undefined).catch(() => {});
     } else if (actionId.startsWith('snooze_')) {
       const minutes = parseInt(actionId.replace('snooze_', ''), 10) || 10;
       if (targetNotif.reminderId) {
         await get().snoozeReminder(targetNotif.reminderId, minutes as SnoozeOption);
       }
+    } else if (actionId === 'dismiss') {
+      TelemetryClient.trackReminder('reminder_dismissed', targetNotif.reminderId || notificationId, {
+        taskId: targetNotif.taskId,
+      }, activeUid || undefined).catch(() => {});
     }
   },
 }));

@@ -16,6 +16,9 @@ _in_memory_tasks: Dict[str, List[Dict[str, Any]]] = {}
 _in_memory_goals: Dict[str, List[Dict[str, Any]]] = {}
 _in_memory_projects: Dict[str, List[Dict[str, Any]]] = {}
 _in_memory_chat: Dict[str, List[Dict[str, Any]]] = {}
+_in_memory_telemetry: Dict[str, List[Dict[str, Any]]] = {}
+_in_memory_daily_analytics: Dict[str, Dict[str, Any]] = {}
+_in_memory_mood_energy: Dict[str, List[Dict[str, Any]]] = {}
 
 def get_db():
     global _db, _firestore_available
@@ -291,5 +294,137 @@ def save_brain_dump_doc(uid: str, transcript: str, task_ids: List[str], audio_ur
         except Exception as e:
             logger.warning(f"Error saving brain dump to Firestore: {e}")
     return bd_id
+
+def save_telemetry_event(uid: str, event_data: Dict[str, Any]) -> str:
+    """
+    Save a single telemetry event under users/{uid}/telemetry/{eventId}
+    """
+    event_id = event_data.get("id") or f"evt_{int(datetime.now(timezone.utc).timestamp()*1000)}_{uuid.uuid4().hex[:6]}"
+    event_data["id"] = event_id
+    event_data["userId"] = uid
+    if "timestamp" not in event_data or not event_data["timestamp"]:
+        event_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+    if "createdAt" not in event_data or not event_data["createdAt"]:
+        event_data["createdAt"] = datetime.now(timezone.utc).isoformat()
+
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('telemetry').document(event_id).set(event_data)
+        except Exception as e:
+            logger.warning(f"Failed to write telemetry to Firestore ({e}), storing in memory.")
+            _in_memory_telemetry.setdefault(uid, []).append(event_data)
+    else:
+        _in_memory_telemetry.setdefault(uid, []).append(event_data)
+
+    return event_id
+
+def save_telemetry_batch(uid: str, events: List[Dict[str, Any]]) -> int:
+    """
+    Batch write telemetry events with deduplication
+    """
+    count = 0
+    db = get_db()
+    
+    if db is not None:
+        try:
+            batch = db.batch()
+            for evt in events:
+                evt_id = evt.get("id") or f"evt_{int(datetime.now(timezone.utc).timestamp()*1000)}_{uuid.uuid4().hex[:6]}"
+                evt["id"] = evt_id
+                evt["userId"] = uid
+                if "timestamp" not in evt or not evt["timestamp"]:
+                    evt["timestamp"] = datetime.now(timezone.utc).isoformat()
+                doc_ref = db.collection('users').document(uid).collection('telemetry').document(evt_id)
+                batch.set(doc_ref, evt)
+                count += 1
+            batch.commit()
+            return count
+        except Exception as e:
+            logger.warning(f"Batch write to Firestore failed ({e}), saving in memory.")
+    
+    # In-memory fallback
+    seen = {e.get("id") for e in _in_memory_telemetry.get(uid, [])}
+    for evt in events:
+        evt_id = evt.get("id") or f"evt_{int(datetime.now(timezone.utc).timestamp()*1000)}_{uuid.uuid4().hex[:6]}"
+        evt["id"] = evt_id
+        evt["userId"] = uid
+        if evt_id not in seen:
+            _in_memory_telemetry.setdefault(uid, []).append(evt)
+            seen.add(evt_id)
+            count += 1
+
+    return count
+
+def get_user_telemetry_events(uid: str, limit: int = 200) -> List[Dict[str, Any]]:
+    """
+    Retrieve recent telemetry events for analytics processing
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            docs = db.collection('users').document(uid).collection('telemetry')\
+                     .order_by('timestamp', direction=firestore.Query.DESCENDING)\
+                     .limit(limit).stream()
+            events = []
+            for doc in docs:
+                data = doc.to_dict()
+                data["id"] = doc.id
+                events.append(data)
+            return events
+        except Exception as e:
+            logger.warning(f"Error reading telemetry from Firestore ({e}), using in-memory.")
+
+    mem = _in_memory_telemetry.get(uid, [])
+    return list(reversed(mem[-limit:]))
+
+def save_daily_analytics_doc(uid: str, date_str: str, data: Dict[str, Any]) -> None:
+    """
+    Save pre-aggregated daily analytics doc under users/{uid}/analytics_daily/{date}
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('analytics_daily').document(date_str).set(data)
+        except Exception as e:
+            logger.warning(f"Error saving daily analytics to Firestore: {e}")
+    _in_memory_daily_analytics[f"{uid}_{date_str}"] = data
+
+def get_daily_analytics_doc(uid: str, date_str: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve daily analytics doc from Firestore or in-memory cache
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            doc = db.collection('users').document(uid).collection('analytics_daily').document(date_str).get()
+            if doc.exists:
+                return doc.to_dict()
+        except Exception as e:
+            logger.warning(f"Error reading daily analytics from Firestore: {e}")
+    return _in_memory_daily_analytics.get(f"{uid}_{date_str}")
+
+def save_mood_energy_doc(uid: str, energy: Optional[str], mood: Optional[str], source: str = "manual", notes: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Record an explicit mood and energy log
+    """
+    log_id = f"log_{int(datetime.now(timezone.utc).timestamp()*1000)}"
+    doc_data = {
+        "id": log_id,
+        "userId": uid,
+        "energy": energy,
+        "mood": mood,
+        "source": source,
+        "notes": notes,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('energy_mood_logs').document(log_id).set(doc_data)
+        except Exception as e:
+            logger.warning(f"Error saving mood/energy log to Firestore: {e}")
+    _in_memory_mood_energy.setdefault(uid, []).append(doc_data)
+    return doc_data
 
 

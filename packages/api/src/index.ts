@@ -9,5 +9,7 @@ export * from './storageService';
 export * from './taskFirestoreService';
 export * from './syncService';
 export * from './notifications';
+export * from './telemetry';
+export * from './analytics';
 export * from './config/env';
 

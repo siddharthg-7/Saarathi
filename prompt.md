@@ -1,530 +1,687 @@
-# Phase 7 — Saarathi Notification & Smart Reminder Engine
+# Phase 8 — Saarathi Analytics Engine & Behavioral Telemetry
 
-You are continuing development of **Saarathi**, an AI-powered personal productivity OS.
+You are continuing development of **Saarathi**, an AI-powered personal productivity operating system.
 
 The AI assistant is called **Kairo**.
 
-The project already contains:
+Phase 7 — Notification & Smart Reminder Engine — has already been implemented and verified.
 
-* React Native + Expo mobile application
-* React web application
-* Firebase Authentication
-* Firestore
-* Existing task management
-* Existing notification store
-* `useNotificationStore.ts`
-* `NotificationsProfileView.tsx`
+Do NOT rebuild Phase 7.
 
-Do NOT rebuild existing functionality.
+Do NOT replace the existing architecture.
 
-Your job is to implement **Phase 7: Notifications, Reminder Scheduling, Smart Reminders, Snoozing, and Missed Reminder Intelligence**.
+Do NOT create duplicate telemetry systems.
+
+Your task is to implement and complete **Phase 8 — Analytics Engine & Behavioral Telemetry** on top of the existing Saarathi codebase.
 
 ---
 
-# 1. PRIMARY OBJECTIVE
+# 1. CURRENT PROJECT STATE
 
-Build a reliable, cross-platform notification system for Saarathi that works across:
+The project already contains:
 
-* Android
-* iOS
-* Web
+### Frontend
 
-The system must be designed around a **$0 notification infrastructure requirement**.
+* React web application
+* React Native + Expo mobile application
+* Existing Analytics View
+* Existing task management
+* Existing focus/task UI
+* Existing notification system
+* Existing Kairo UI
+* Existing mood/energy concepts where applicable
 
-Do NOT introduce a paid notification provider.
+### Backend
 
-Do NOT make `ntfy.sh` a required dependency.
+* FastAPI
+* Existing telemetry API:
+  `backend/app/api/telemetry.py`
 
-Use:
+### Shared API
 
-### Mobile
+* Existing telemetry client:
+  `packages/api/src/telemetryApi.ts`
 
-`expo-notifications`
+### Analytics UI
 
-for local scheduled notifications and push notification handling.
-
-### Remote push
-
-Firebase Cloud Messaging / Expo Push Service where remote notification delivery is required.
-
-Firebase Cloud Messaging is the preferred backend messaging mechanism.
-
-### Web
-
-Use standards-based Web Push with Firebase Cloud Messaging where supported.
+* Existing:
+  `AnalyticsView.tsx`
 
 ### Database
 
-Firestore.
+* Firebase Authentication
+* Firestore
+* Existing user/task/reminder/notification structures
 
-All notification preferences, reminder definitions, device tokens, notification events, and scheduling metadata must belong to the authenticated user.
-
----
-
-# 2. IMPORTANT COST CONSTRAINT
-
-The notification architecture must remain usable without requiring:
-
-* ntfy.sh paid subscription
-* OneSignal paid plan
-* Pusher
-* Twilio
-* paid notification SaaS
-* paid cron service
-* paid scheduling service
-
-Do not add any third-party notification SaaS unless absolutely necessary.
-
-Use free/native capabilities first.
-
-The application should continue functioning even if remote push is unavailable.
+Phase 7 already introduced notification telemetry concepts.
 
 ---
 
-# 3. NOTIFICATION ARCHITECTURE
+# 2. PRIMARY OBJECTIVE
 
-Implement three notification layers.
+Build a reliable analytics engine that answers:
 
-## Layer 1 — Local Notifications
+> "How does this user actually work?"
 
-Primary mechanism for normal task reminders.
+Saarathi should be able to measure:
+
+* task completion
+* task velocity
+* task delays
+* focus duration
+* productivity by hour
+* productivity by weekday
+* notification behavior
+* Kairo usage
+* mood
+* energy
+* habit consistency
+* procrastination patterns
+* rescheduling behavior
+
+Then transform those raw events into:
+
+* daily summaries
+* weekly reports
+* monthly insights
+* productivity graphs
+* heatmaps
+* trend analysis
+
+Do not make unsupported psychological or medical claims.
+
+Analytics should describe observed behavior rather than diagnose the user.
+
+---
+
+# 3. IMPORTANT ARCHITECTURAL PRINCIPLE
+
+Separate:
+
+```text
+RAW TELEMETRY
+```
+
+from:
+
+```text
+DERIVED ANALYTICS
+```
+
+and:
+
+```text
+AI/ML PREDICTIONS
+```
+
+Architecture:
+
+```text
+User Activity
+      ↓
+Telemetry Events
+      ↓
+Raw Event Storage
+      ↓
+Aggregation
+      ↓
+Analytics Metrics
+      ↓
+Charts / Reports
+      ↓
+Future ML
+```
+
+Do not store calculated metrics as if they were raw events.
+
+---
+
+# 4. TELEMETRY EVENT MODEL
+
+Create a strongly typed telemetry event model.
+
+Suggested structure:
+
+```ts
+TelemetryEvent {
+  id
+  userId
+  eventType
+  timestamp
+  timezone
+  platform
+  sessionId
+  entityType
+  entityId
+  metadata
+  createdAt
+}
+```
+
+`metadata` must be structured and typed where possible.
+
+Avoid using unstructured arbitrary JSON everywhere.
+
+---
+
+# 5. EVENT TYPES
+
+Create a centralized event taxonomy.
+
+## Task Events
+
+```text
+task_created
+task_started
+task_completed
+task_cancelled
+task_deleted
+task_rescheduled
+task_postponed
+task_snoozed
+task_reopened
+task_overdue
+```
+
+## Focus Events
+
+```text
+focus_started
+focus_paused
+focus_resumed
+focus_completed
+focus_abandoned
+focus_interrupted
+```
+
+## Reminder Events
+
+Integrate with the Phase 7 notification engine.
+
+```text
+reminder_scheduled
+reminder_sent
+reminder_opened
+reminder_ignored
+reminder_snoozed
+reminder_completed
+reminder_dismissed
+reminder_cancelled
+```
+
+Do not duplicate the notification system.
+
+Reuse the existing Phase 7 notification event infrastructure where possible.
+
+## Energy Events
+
+```text
+energy_logged
+```
+
+Values:
+
+```text
+low
+medium
+high
+```
+
+## Mood Events
+
+```text
+mood_logged
+```
+
+Use a simple controlled vocabulary rather than arbitrary free text.
 
 Example:
 
-Task:
+```text
+very_low
+low
+neutral
+good
+very_good
+```
 
-`Study DSA`
+## Habit Events
 
-Due:
+```text
+habit_created
+habit_completed
+habit_missed
+habit_skipped
+habit_rescheduled
+```
 
-`Tomorrow 8:00 AM`
+## Kairo Events
 
-The mobile application schedules the notification locally.
+```text
+kairo_session_started
+kairo_message_sent
+kairo_response_received
+kairo_task_created
+kairo_task_modified
+kairo_brain_dump_started
+kairo_brain_dump_completed
+kairo_recommendation_shown
+kairo_recommendation_accepted
+kairo_recommendation_rejected
+```
 
-Use:
+Do NOT store the entire private conversation as telemetry.
 
-`expo-notifications`
+Store only analytics metadata necessary to understand interaction behavior.
 
-The reminder should still fire if the device temporarily has no internet connection.
+## Navigation / Product Events
 
-Use local scheduling whenever the reminder can be determined from local task data.
-
----
-
-# 4. REMOTE PUSH NOTIFICATIONS
-
-Remote notifications are used for events that originate from the server or another device.
+Use sparingly.
 
 Examples:
 
-* Task changed on another device
-* Kairo completed a brain-dump analysis
-* Important AI insight generated
-* Reminder generated by server-side intelligence
-* Cross-device synchronization event
-* Security/account notification
+```text
+analytics_view_opened
+focus_view_opened
+task_view_opened
+```
 
-Use Firebase Cloud Messaging / Expo Push infrastructure.
-
-Never assume that a remote notification is required for every task reminder.
+Do not track every UI click.
 
 ---
 
-# 5. DEVICE REGISTRATION
+# 6. EVENT DEDUPLICATION
 
-Create a device notification registration system.
+Telemetry must be idempotent.
 
-Suggested Firestore structure:
+Network retries must not create duplicate events.
 
-```text
-users/{userId}/devices/{deviceId}
-```
-
-Fields:
-
-```text
-deviceId
-userId
-platform
-token
-pushProvider
-appVersion
-deviceName
-enabled
-createdAt
-updatedAt
-lastSeenAt
-```
-
-Possible values:
-
-```text
-platform:
-android
-ios
-web
-
-pushProvider:
-expo
-fcm
-web-push
-```
-
-Never store device tokens globally without associating them with a user.
-
-A user can have multiple devices.
+Each event should have a deterministic or client-generated unique ID.
 
 Example:
 
 ```text
-Siddhartha
-│
-├── Android phone
-├── Windows browser
-└── Tablet
+eventId
 ```
 
-Each device can independently receive appropriate notifications.
+Before creating duplicate events, ensure the same event is not written twice.
+
+This is particularly important for:
+
+* offline events
+* reconnect events
+* mobile app restarts
+* Firestore retry behavior
+* HTTP retry behavior
 
 ---
 
-# 6. PERMISSION FLOW
+# 7. OFFLINE-FIRST TELEMETRY
 
-Do NOT immediately ask for notification permission when the application launches.
-
-Use contextual permission onboarding.
-
-Example:
-
-After the user creates their first reminder:
-
-> Stay on track?
-
-> Saarathi can remind you when it's time to work on your tasks.
-
-Buttons:
-
-`Enable Notifications`
-
-`Not Now`
-
-Only request the operating-system permission after the user expresses intent.
-
-Handle:
-
-* granted
-* denied
-* provisional where supported
-* unavailable
-* permanently denied
-
-Gracefully.
-
----
-
-# 7. NOTIFICATION STORE
-
-The existing:
-
-`useNotificationStore.ts`
-
-must become the central client-side notification state layer.
-
-Do not create duplicate notification stores.
-
-It should manage:
-
-```text
-notifications
-unreadCount
-permissionStatus
-globalNotificationEnabled
-taskReminderEnabled
-smartReminderEnabled
-dailyBriefEnabled
-habitReminderEnabled
-focusReminderEnabled
-soundEnabled
-vibrationEnabled
-quietHours
-snoozeDefaults
-deviceRegistration
-```
-
-Use the existing project state-management conventions.
-
-Do not introduce another state-management library.
-
----
-
-# 8. NOTIFICATION PREFERENCES
-
-Extend:
-
-`NotificationsProfileView.tsx`
-
-with a clean settings interface.
-
-Sections:
-
-## Notifications
-
-Master notification toggle.
-
-## Task Reminders
-
-Enable/disable task reminders.
-
-## Smart Reminders
-
-Allow Kairo to intelligently adjust reminder timing.
-
-## Daily Brief
-
-Morning productivity briefing.
-
-## Habit Reminders
-
-Habit-related reminders.
-
-## Focus Sessions
-
-Focus start/end notifications.
-
-## Quiet Hours
+Saarathi must continue collecting telemetry when offline.
 
 Example:
 
 ```text
-Quiet Hours
-
-11:00 PM — 7:00 AM
+User completes task
+        ↓
+No internet
+        ↓
+Store event locally
+        ↓
+Internet returns
+        ↓
+Upload telemetry
+        ↓
+Mark event synchronized
 ```
 
-## Notification Sound
+Do NOT lose behavioral data merely because the user was offline.
 
-On/off.
+Create an event queue where appropriate.
 
-## Vibration
+The queue must support:
 
-On/off.
+```text
+pending
+syncing
+synced
+failed
+```
 
-Keep the interface minimal and consistent with Saarathi's existing design system.
+Implement retry with exponential backoff.
+
+Avoid infinite retry loops.
 
 ---
 
-# 9. REMINDER DATA MODEL
+# 8. PRIVACY
 
-Create a reliable Firestore representation for reminders.
+Telemetry must follow data minimization.
 
-Suggested:
+Do NOT collect:
+
+* passwords
+* authentication tokens
+* API keys
+* unnecessary private message content
+* raw voice recordings as analytics metadata
+* sensitive personal information unrelated to productivity analytics
+
+For Kairo interactions, track:
 
 ```text
-users/{userId}/reminders/{reminderId}
+message type
+session duration
+response latency
+tool usage
+task creation
+recommendation interaction
 ```
 
-Fields:
+rather than storing the entire conversation as telemetry.
+
+---
+
+# 9. TASK COMPLETION METRICS
+
+Implement:
+
+### Completion Rate
 
 ```text
-id
-userId
+completed tasks / planned tasks × 100
+```
+
+Define "planned task" consistently.
+
+Do not count deleted tasks as completed or failed unless explicitly recorded.
+
+### Completion Velocity
+
+Measure:
+
+```text
+tasks completed / day
+tasks completed / week
+tasks completed / month
+```
+
+### Completion Time
+
+Track:
+
+```text
+task started
+        ↓
+task completed
+```
+
+Calculate:
+
+```text
+completionDuration
+```
+
+### On-Time Completion
+
+Compare task completion with its due time.
+
+Track:
+
+```text
+completed_on_time
+completed_late
+```
+
+Do not use arbitrary client-clock comparisons when server timestamps are available.
+
+---
+
+# 10. TASK VELOCITY
+
+Implement productivity velocity.
+
+Examples:
+
+```text
+Tasks completed today
+Tasks completed this week
+Average tasks/day
+7-day velocity
+30-day velocity
+```
+
+Do not equate a higher task count automatically with higher productivity.
+
+Provide contextual metrics.
+
+Example:
+
+```text
+Tasks completed: 12
+Average completion time: 34 min
+Focus time: 4h 20m
+```
+
+---
+
+# 11. FOCUS TELEMETRY
+
+Integrate with the existing Focus/Pomodoro system.
+
+Record:
+
+```text
+focus_started
+focus_paused
+focus_resumed
+focus_completed
+focus_abandoned
+focus_interrupted
+```
+
+Track:
+
+```text
+plannedDuration
+actualDuration
+pauseDuration
+interruptionCount
+completionStatus
 taskId
-title
-body
-scheduledAt
-timezone
-status
-type
-priority
-channel
-isRecurring
-recurrenceRule
-createdAt
-updatedAt
-snoozedUntil
-attemptCount
-lastTriggeredAt
 ```
 
-Status:
+Calculate:
+
+### Total Focus Time
 
 ```text
-scheduled
-triggered
+sum(actual focus duration)
+```
+
+### Average Focus Session
+
+```text
+total focus duration / number of completed sessions
+```
+
+### Focus Completion Rate
+
+```text
+completed focus sessions /
+started focus sessions
+```
+
+Do not count paused time as active focus time.
+
+---
+
+# 12. PRODUCTIVITY BY HOUR
+
+Aggregate activity into hourly buckets.
+
+Example:
+
+```text
+00:00
+01:00
+02:00
+...
+23:00
+```
+
+Calculate useful metrics such as:
+
+```text
+tasks completed
+focus minutes
+tasks started
+completion rate
+```
+
+Do not simply define the "best hour" from task count alone.
+
+Use a transparent metric.
+
+Example:
+
+```text
+Productivity Score =
+normalized completion rate
++
+normalized focus time
++
+on-time completion
+```
+
+Document the exact formula.
+
+---
+
+# 13. PRODUCTIVITY BY WEEKDAY
+
+Calculate:
+
+```text
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
+Sunday
+```
+
+Metrics:
+
+* completion rate
+* completed tasks
+* focus minutes
+* average task duration
+* reschedule rate
+
+Allow the user to identify patterns without presenting them as absolute truths.
+
+Example:
+
+> Your highest average completion rate has occurred on Tuesday over the last 4 weeks.
+
+Avoid:
+
+> Tuesday is your objectively most productive day.
+
+---
+
+# 14. NOTIFICATION INTERACTION ANALYTICS
+
+Integrate with Phase 7.
+
+Track:
+
+```text
+sent
+opened
+ignored
 snoozed
+dismissed
 completed
-cancelled
-missed
 ```
 
-Types:
+Calculate:
+
+### Reminder Response Rate
 
 ```text
-task
-habit
-focus
-daily_brief
-smart
-system
+opened / delivered
 ```
+
+### Reminder Completion Rate
+
+```text
+completed after reminder /
+reminders delivered
+```
+
+### Snooze Rate
+
+```text
+snoozed / delivered
+```
+
+### Ignore Rate
+
+```text
+ignored / delivered
+```
+
+These metrics will later become features for the Phase 9 procrastination model.
 
 ---
 
-# 10. REMINDER SCHEDULING ENGINE
+# 15. AI / KAIRO ANALYTICS
 
-Create a dedicated reminder service.
+Track Kairo usage without storing private conversation content unnecessarily.
 
-Example:
+Metrics:
 
 ```text
-services/notifications/
-    notificationService.ts
-    localNotificationService.ts
-    pushNotificationService.ts
-    reminderScheduler.ts
-    notificationPermissions.ts
-    notificationHandlers.ts
-    smartReminderService.ts
+Kairo sessions
+messages per session
+average response latency
+tasks created through Kairo
+tasks modified through Kairo
+brain dumps processed
+recommendations shown
+recommendations accepted
+recommendations rejected
 ```
 
-The scheduler must:
+Calculate:
 
-1. Read active reminders.
-2. Validate the user's notification preferences.
-3. Convert the reminder into the user's timezone.
-4. Schedule local notifications where possible.
-5. Register remote notification requirements where necessary.
-6. Persist scheduling state.
-7. Prevent duplicate scheduling.
-8. Cancel notifications when tasks are deleted.
-9. Reschedule notifications when tasks change.
-10. Handle recurring reminders safely.
+```text
+Recommendation Acceptance Rate
+```
+
+```text
+accepted recommendations /
+recommendations shown
+```
+
+Track latency:
+
+```text
+request timestamp
+response timestamp
+```
+
+Use this to identify slow AI workflows.
 
 ---
 
-# 11. TIMEZONE HANDLING
+# 16. MOOD & ENERGY LOGGING
 
-Never rely blindly on the device clock.
-
-Every user should have a timezone preference.
-
-Store:
-
-```text
-timezone
-```
-
-using an IANA timezone identifier.
-
-Examples:
-
-```text
-Asia/Kolkata
-America/New_York
-Europe/London
-```
-
-When a user travels, reminders should adapt correctly.
-
-Do not store only a raw UTC offset.
-
----
-
-# 12. TASK → REMINDER LIFECYCLE
-
-When a user creates:
-
-```text
-Task:
-Complete DSA
-
-Due:
-Tomorrow 8:00 AM
-```
-
-System:
-
-```text
-Create task
-      ↓
-Firestore
-      ↓
-Reminder Scheduler
-      ↓
-Check notification settings
-      ↓
-Calculate trigger time
-      ↓
-Schedule local notification
-      ↓
-Persist reminder ID
-```
-
-When the task is completed:
-
-```text
-Task completed
-      ↓
-Find associated reminders
-      ↓
-Cancel pending notifications
-      ↓
-Mark reminder completed
-```
-
-When the task is rescheduled:
-
-```text
-Task changed
-      ↓
-Cancel old reminder
-      ↓
-Calculate new trigger
-      ↓
-Schedule new reminder
-      ↓
-Persist updated state
-```
-
----
-
-# 13. SMART REMINDERS
-
-Implement smart reminders as a separate layer.
-
-Do NOT initially use ML.
-
-Start with deterministic rules.
-
-Example:
-
-Task:
-
-`Gym`
-
-Original:
-
-`Monday 9:00 PM`
-
-Historical behavior:
-
-User frequently skips gym at 9 PM.
-
-Kairo can recommend:
-
-> You usually miss this task at this time. Would you like to move it to tomorrow morning?
-
-Important:
-
-Smart reminders should initially **recommend** changes.
-
-Do not automatically modify the user's schedule without permission.
-
----
-
-# 14. ENERGY-AWARE REMINDERS
-
-Use the user's existing energy information if available.
+Implement simple daily logging.
 
 Energy:
 
@@ -534,806 +691,923 @@ medium
 high
 ```
 
-If the user reports:
+Mood:
 
 ```text
-Energy: Low
+very_low
+low
+neutral
+good
+very_good
 ```
 
-and the next task requires high concentration:
+Store:
 
 ```text
-Deep ML Study
+timestamp
+timezone
+energy
+mood
+source
 ```
 
-Kairo can suggest:
+Source can be:
 
-> Your energy is low right now. Would you rather start with a lighter task?
+```text
+manual
+kairo
+daily_checkin
+```
 
-Do not claim that ML is making this decision during Phase 7.
+Do not automatically infer mood from private conversations in Phase 8.
 
-The ML system will be integrated in the later intelligence phase.
+Only use explicit user-provided values.
 
 ---
 
-# 15. SMART REMINDER RULE ENGINE
+# 17. ENERGY CORRELATION
 
-Create a transparent rule engine.
-
-Example rules:
-
-```text
-Rule 1:
-If task is due soon
-AND user has not started
-→ send reminder.
-
-Rule 2:
-If task has been snoozed repeatedly
-→ recommend rescheduling.
-
-Rule 3:
-If quiet hours are active
-→ delay non-critical reminder.
-
-Rule 4:
-If task is completed
-→ cancel reminder.
-
-Rule 5:
-If user manually disables reminders
-→ never send task reminders.
-
-Rule 6:
-If notification permission is denied
-→ show in-app reminder instead.
-```
-
-Store the reason for smart reminder decisions.
+Calculate descriptive correlations.
 
 Example:
 
 ```text
-reason:
-"Task is due in 30 minutes and has not been started."
+Energy = High
+Average completion rate = 82%
+
+Energy = Medium
+Average completion rate = 67%
+
+Energy = Low
+Average completion rate = 48%
 ```
 
-This will later support Kairo's explainability system.
+Important:
+
+Use language such as:
+
+> Tasks completed during your high-energy periods have had a higher completion rate.
+
+Do NOT claim:
+
+> Low energy causes procrastination.
+
+Correlation is not causation.
 
 ---
 
-# 16. SNOOZE SYSTEM
+# 18. HABIT STREAKS
 
-Implement:
-
-```text
-Snooze 10 min
-Snooze 30 min
-Snooze 1 hour
-Tomorrow
-Custom time
-```
-
-When snoozed:
-
-```text
-cancel current notification
-      ↓
-create/update reminder
-      ↓
-set snoozedUntil
-      ↓
-schedule new notification
-```
-
-Record:
-
-```text
-snoozeCount
-lastSnoozedAt
-```
-
-Do not allow infinite notification duplication.
-
----
-
-# 17. INTELLIGENT RESCHEDULING
-
-If a user repeatedly snoozes a task:
-
-Example:
-
-```text
-Gym
-
-Snoozed:
-4 times
-```
-
-Kairo can say:
-
-> You've postponed this four times. Would you like me to find a better time?
-
-Possible actions:
-
-```text
-Keep current time
-
-Move to tomorrow
-
-Choose another time
-
-Let Kairo suggest a time
-```
-
-The user must remain in control.
-
----
-
-# 18. MISSED REMINDER ESCALATION
-
-Create progressive escalation.
-
-Example:
-
-```text
-Reminder
-    ↓
-No interaction
-    ↓
-Grace period
-    ↓
-Second reminder
-    ↓
-Mark as potentially missed
-```
-
-Do NOT spam the user.
-
-Example:
-
-First:
-
-> Time to work on DSA.
-
-After grace period:
-
-> You haven't started DSA yet. Want to do a smaller 20-minute version?
-
-If repeatedly ignored:
-
-> Should I move this to another time?
-
-The system should learn from interactions later.
-
----
-
-# 19. NOTIFICATION DEDUPLICATION
-
-This is critical.
-
-Never send:
-
-```text
-same task
-same time
-same device
-```
-
-multiple times.
-
-Generate deterministic notification IDs.
-
-Example:
-
-```text
-${userId}_${taskId}_${scheduledAt}
-```
-
-Before scheduling:
-
-```text
-Does this notification already exist?
-
-YES → do not schedule again.
-
-NO → schedule it.
-```
-
-This prevents duplicate notifications caused by Firestore listeners or app restarts.
-
----
-
-# 20. OFFLINE-FIRST BEHAVIOR
-
-The notification system must work offline.
-
-If the mobile device loses connectivity:
-
-```text
-Existing scheduled reminders
-        ↓
-continue firing locally
-```
-
-When connectivity returns:
-
-```text
-Firestore sync
-      ↓
-reconcile task state
-      ↓
-reconcile reminders
-      ↓
-cancel obsolete reminders
-      ↓
-schedule missing reminders
-```
-
-Do not require continuous internet connectivity for ordinary task reminders.
-
----
-
-# 21. WEB NOTIFICATIONS
-
-Implement browser notifications where supported.
-
-The web application should:
-
-* request permission contextually
-* register the browser/device
-* receive supported push notifications
-* deep-link to the relevant Saarathi page
-* mark notification as read
-* update unread state
-
-If browser push is unavailable:
-
-show an in-app notification instead.
-
-Never break the application because browser notifications are unavailable.
-
----
-
-# 22. NOTIFICATION CENTER
-
-The existing notification view should become a real notification center.
-
-Example:
-
-```text
-Notifications
-
-Today
-
-09:00
-DSA reminder
-
-08:30
-Kairo prepared your daily plan
-
-Yesterday
-
-Gym reminder
-
-Focus session completed
-```
-
-Support:
-
-* read/unread
-* mark all as read
-* delete
-* notification type
-* task deep-link
-* timestamp
-* priority
-
----
-
-# 23. NOTIFICATION ACTIONS
-
-Where platform support allows it, notifications should expose useful actions.
-
-Example:
-
-```text
-DSA Practice
-
-[Start] [Snooze] [Done]
-```
-
-When the user selects:
-
-`Done`
-
-the corresponding task should be completed.
-
-When:
-
-`Snooze`
-
-is selected:
-
-open the snooze logic.
-
-Do not assume every platform supports every action identically. Gracefully fall back to opening Saarathi.
-
----
-
-# 24. KAIRO INTEGRATION
-
-Kairo should be the intelligence layer, not the notification delivery mechanism.
-
-Bad architecture:
-
-```text
-Kairo directly sends notifications
-```
-
-Correct architecture:
-
-```text
-Kairo
-  ↓
-Recommendation
-  ↓
-Reminder Engine
-  ↓
-Notification Service
-  ↓
-Device
-```
-
-Example:
-
-Kairo decides:
-
-```text
-Recommended reminder:
-Tomorrow 8:30 AM
-```
-
-The Reminder Engine validates:
-
-* user preference
-* quiet hours
-* task state
-* timezone
-* duplicate status
-
-Then the Notification Service schedules it.
-
----
-
-# 25. FIRESTORE REAL-TIME SYNC
-
-Use Firestore listeners to keep notification state synchronized across devices.
-
-Example:
-
-```text
-Phone
-  ↓
-Completes task
-  ↓
-Firestore
-  ↓
-Web listener
-  ↓
-Web cancels/updates reminder state
-```
-
-Likewise:
-
-```text
-Web
-  ↓
-Reschedules task
-  ↓
-Firestore
-  ↓
-Mobile listener
-  ↓
-Mobile reminder scheduler
-  ↓
-Old reminder cancelled
-  ↓
-New reminder scheduled
-```
-
----
-
-# 26. SERVER TIMESTAMPS
-
-For Firestore writes use server timestamps where appropriate.
-
-Do not use arbitrary client timestamps for synchronization decisions.
-
-Use:
-
-```text
-serverTimestamp()
-```
-
-for:
-
-```text
-createdAt
-updatedAt
-triggeredAt
-snoozedAt
-completedAt
-lastSeenAt
-```
-
-Local trigger calculations may use the device's timezone and scheduling APIs, but synchronization metadata must remain server-authoritative.
-
----
-
-# 27. FAILURE HANDLING
-
-The notification system must never crash Saarathi.
-
-If:
-
-```text
-notification permission denied
-```
-
-→ use in-app reminders.
-
-If:
-
-```text
-FCM unavailable
-```
-
-→ continue using local reminders.
-
-If:
-
-```text
-Expo Push unavailable
-```
-
-→ continue local scheduling.
-
-If:
-
-```text
-Firestore temporarily unavailable
-```
-
-→ preserve local reminder state and reconcile later.
-
-If:
-
-```text
-browser notifications unsupported
-```
-
-→ use in-app notification center.
-
----
-
-# 28. LOGGING
-
-Create structured notification events.
-
-Example:
-
-```text
-notification_created
-notification_scheduled
-notification_triggered
-notification_opened
-notification_completed
-notification_snoozed
-notification_dismissed
-notification_failed
-notification_cancelled
-```
-
-Store only the necessary telemetry.
-
-This data will later feed Saarathi's ML behavior engine.
-
----
-
-# 29. ANALYTICS EVENTS
+Implement reliable streak calculation.
 
 Track:
 
 ```text
-reminder_sent
-reminder_opened
-reminder_ignored
-reminder_snoozed
-reminder_completed
-reminder_dismissed
+currentStreak
+longestStreak
+completionRate
+missedDays
+skippedDays
 ```
 
-Do not train ML yet.
+Handle:
 
-Only collect clean telemetry.
+* daily habits
+* weekly habits
+* scheduled days
+* skipped days
+* deleted habits
 
-Phase 9/10 will use this data for behavioral prediction.
+Do not break a streak incorrectly because of timezone differences.
+
+Use the user's configured IANA timezone.
 
 ---
 
-# 30. PRIVACY
+# 19. RESCHEDULING ANALYTICS
 
-Do not put sensitive task content unnecessarily into notification payloads.
-
-Prefer:
+Track:
 
 ```text
-"You have a task waiting in Saarathi."
+task_rescheduled
+task_postponed
+task_snoozed
 ```
 
-rather than exposing private information on a locked screen.
-
-Allow users to choose:
+Calculate:
 
 ```text
-Show full task details
-
-or
-
-Hide task details
+average reschedules/task
+reschedule rate
+most rescheduled categories
+most rescheduled weekdays
+most rescheduled hours
 ```
+
+Example:
+
+> Coding tasks were rescheduled more frequently than your other task categories over the last 30 days.
+
+Do not call this "procrastination" yet.
+
+Phase 9 will build the actual behavioral model.
 
 ---
 
-# 31. TESTING
+# 20. PROCRASTINATION SIGNAL DATASET
 
-Create tests for:
+Phase 8 should collect the features required for future ML.
 
-### Scheduling
+Do NOT train the model yet.
 
-* one-time reminder
-* recurring reminder
-* timezone change
-* task completion
-* task deletion
-* task rescheduling
-
-### Snooze
-
-* 10 minutes
-* 30 minutes
-* 1 hour
-* custom time
-
-### Offline
-
-* create task offline
-* schedule reminder
-* complete task offline
-* reconnect
-* reconcile state
-
-### Deduplication
-
-Ensure the same reminder cannot be scheduled twice.
-
-### Permissions
-
-Test:
-
-* granted
-* denied
-* unavailable
-
-### Cross-device
-
-Test:
+Potential future features:
 
 ```text
-Mobile → Web
-
-Web → Mobile
-
-Mobile offline → reconnect
+taskCategory
+priority
+estimatedDuration
+actualDuration
+dayOfWeek
+hourOfDay
+energy
+mood
+notificationCount
+snoozeCount
+rescheduleCount
+previousCompletionRate
+timeToStart
+timeToCompletion
+deadlineDistance
+focusHistory
 ```
+
+Create a consistent feature schema.
+
+Phase 9 will consume this dataset.
 
 ---
 
-# 32. UI REQUIREMENTS
+# 21. DAILY ANALYTICS AGGREGATION
 
-The notification settings must follow the existing Saarathi design system.
+Create a daily aggregation model.
+
+Example:
+
+```text
+DailyAnalytics {
+  userId
+  date
+  timezone
+
+  tasksPlanned
+  tasksCompleted
+  tasksCompletedOnTime
+  tasksOverdue
+
+  focusMinutes
+  focusSessions
+  focusCompletionRate
+
+  remindersSent
+  remindersOpened
+  remindersSnoozed
+  remindersIgnored
+
+  kairoSessions
+  kairoMessages
+
+  energyAverage
+  moodAverage
+
+  habitsCompleted
+  habitsMissed
+
+  tasksRescheduled
+}
+```
+
+Do not calculate this object separately in every UI component.
+
+Create a centralized analytics aggregation layer.
+
+---
+
+# 22. WEEKLY ANALYTICS
+
+Aggregate daily analytics into weekly metrics.
+
+Include:
+
+```text
+weeklyTasksCompleted
+weeklyCompletionRate
+weeklyFocusMinutes
+weeklyFocusSessions
+weeklyReminderResponseRate
+weeklyHabitCompletionRate
+weeklyRescheduleRate
+weeklyKairoUsage
+```
+
+Compare against the previous week.
+
+Example:
+
+```text
+Focus time
+This week: 12h 40m
+Last week: 10h 15m
+
+Change: +23.6%
+```
+
+Calculate percentage changes safely when the previous value is zero.
+
+---
+
+# 23. MONTHLY ANALYTICS
+
+Create monthly aggregation.
+
+Include:
+
+* total completed tasks
+* completion rate
+* focus time
+* habit consistency
+* reminder response
+* rescheduling patterns
+* Kairo usage
+* energy patterns
+* mood trends
+
+Provide 30-day and calendar-month views where appropriate.
+
+---
+
+# 24. DAILY SUMMARY CARDS
+
+Implement concise cards.
+
+Example:
+
+```text
+Today's Progress
+
+8 / 11 tasks completed
+
+73%
+```
+
+```text
+Focus
+
+3h 42m
+
++18% vs yesterday
+```
+
+```text
+Habits
+
+5 / 6 completed
+```
+
+```text
+Reminders
+
+82% responded
+```
+
+Do not overwhelm the user with metrics.
+
+---
+
+# 25. WEEKLY PRODUCTIVITY REPORT
+
+Create a clean weekly report.
+
+Example:
+
+```text
+Your Week
+
+Tasks
+42 completed
+
+Focus
+16h 20m
+
+Completion
+78%
+
+Habits
+86%
+
+Best observed period
+Tuesday 9–11 AM
+
+Most rescheduled category
+Coding
+```
+
+Include trend comparisons.
+
+---
+
+# 26. MONTHLY INSIGHTS
+
+Generate descriptive insights from analytics.
+
+Examples:
+
+> Your task completion rate increased 12% compared with last month.
+
+> You completed most focus sessions between 9 AM and 12 PM.
+
+> You rescheduled long-duration tasks more often than short tasks.
+
+Do not generate medical, psychological, or deterministic claims.
+
+---
+
+# 27. PRODUCTIVITY HEATMAP
+
+Implement a heatmap showing activity over:
+
+```text
+Day × Hour
+```
+
+Example:
+
+```text
+          8AM  9AM  10AM 11AM 12PM
+Mon        ░    █    █    ▓    ░
+Tue        ▓    █    █    █    ░
+Wed        ░    ▓    █    ▓    ░
+Thu        ▓    █    ▓    ▓    ░
+Fri        ░    ▓    █    ░    ░
+```
+
+Use the project's existing visualization library if one is already installed.
+
+Do NOT add a large charting dependency if the current stack already supports the required charts.
+
+---
+
+# 28. ANALYTICS VIEW
+
+Extend the existing:
+
+`AnalyticsView.tsx`
 
 Do not redesign the entire application.
 
-Use:
-
-* clean cards
-* subtle borders
-* restrained shadows
-* clear hierarchy
-* accessible controls
-* responsive layout
-* light/dark theme compatibility
-
-Avoid excessive animations.
-
-The notification UI should feel like part of Saarathi, not a separate module.
-
----
-
-# 33. CODE QUALITY REQUIREMENTS
-
-Before finishing:
-
-* Do not duplicate notification logic.
-* Do not create multiple notification stores.
-* Do not hardcode user IDs.
-* Do not hardcode device IDs.
-* Do not expose Firebase credentials.
-* Do not put API keys in client code unless the API explicitly requires public client configuration.
-* Do not introduce unnecessary dependencies.
-* Keep services modular.
-* Keep platform-specific notification logic isolated.
-* Use TypeScript types everywhere.
-* Handle errors explicitly.
-* Avoid `any` unless unavoidable.
-* Add comments only where architectural reasoning is non-obvious.
-
----
-
-# 34. ENVIRONMENT VARIABLES
-
-Use environment variables for configuration.
-
-Never hardcode secrets.
-
-Separate:
+Use a hierarchy:
 
 ```text
-development
-test
-production
+Analytics
+
+[Today] [7 Days] [30 Days]
+
+--------------------------------
+
+Overview
+
+Tasks completed
+Focus time
+Completion rate
+Habit consistency
+
+--------------------------------
+
+Productivity Trend
+
+[Chart]
+
+--------------------------------
+
+Focus Patterns
+
+[Chart]
+
+--------------------------------
+
+Activity Heatmap
+
+[Heatmap]
+
+--------------------------------
+
+Behavior Patterns
+
+[Insight cards]
+
+--------------------------------
+
+Kairo Insights
+
+[AI-related analytics]
 ```
 
-configuration.
+Keep the interface clean and readable.
 
 ---
 
-# 35. ACCEPTANCE CRITERIA
+# 29. EMPTY STATE / COLD START
 
-Phase 7 is complete only when:
+New users will have insufficient data.
 
-### Core
+Do NOT show misleading graphs.
 
-* [ ] Local task reminders work on mobile.
-* [ ] Notification permissions are handled correctly.
-* [ ] Notification preferences persist.
-* [ ] Notifications appear in the Notification Center.
-* [ ] Task completion cancels pending reminders.
-* [ ] Task rescheduling updates reminders.
-* [ ] Task deletion cancels reminders.
+Instead:
 
-### Smart
+```text
+You're just getting started.
 
-* [ ] Smart reminder rules work.
-* [ ] Snooze works.
-* [ ] Intelligent rescheduling suggestions work.
-* [ ] Missed reminder escalation works.
-* [ ] Duplicate notifications are prevented.
+Complete a few tasks and focus sessions
+to unlock your productivity patterns.
+```
 
-### Cross-platform
+Progressively unlock analytics.
 
-* [ ] Android behavior works.
-* [ ] iOS-compatible implementation exists.
-* [ ] Web notification support is implemented where available.
-* [ ] In-app fallback exists.
+Example:
 
-### Offline
+```text
+0–2 days
+Basic activity
 
-* [ ] Scheduled local reminders survive temporary offline state.
-* [ ] Firestore synchronization reconciles correctly after reconnect.
-* [ ] No duplicate reminders appear after synchronization.
+3–6 days
+Early trends
 
-### Cost
+7+ days
+Weekly patterns
 
-* [ ] No paid notification provider is required.
-* [ ] ntfy.sh is NOT required.
-* [ ] No paid notification SaaS is introduced.
-* [ ] FCM/Expo free capabilities are used appropriately.
+30+ days
+Reliable long-term trends
+```
+
+Do not call a pattern "reliable" merely because a fixed number of days has passed; use the UI language carefully.
+
+---
+
+# 30. DATA QUALITY
+
+Analytics must handle:
+
+* deleted tasks
+* cancelled tasks
+* recurring tasks
+* overdue tasks
+* timezone changes
+* offline events
+* duplicate events
+* missing timestamps
+* incomplete focus sessions
+* app crashes
+* abandoned sessions
+
+Never allow malformed telemetry to crash analytics aggregation.
+
+---
+
+# 31. TIMEZONE RULES
+
+Use IANA timezone identifiers.
+
+Example:
+
+```text
+Asia/Kolkata
+```
+
+All analytics should respect the user's timezone.
+
+A task completed at:
+
+```text
+23:30 India
+```
+
+must not accidentally appear as the next day's activity because of UTC conversion.
+
+Store canonical timestamps but aggregate using the user's configured timezone.
+
+---
+
+# 32. PERFORMANCE
+
+Do NOT query the entire task history every time the Analytics screen opens.
+
+Use:
+
+```text
+daily aggregates
+weekly aggregates
+monthly aggregates
+```
+
+where appropriate.
+
+Use pagination for raw event history.
+
+Cache analytics results.
+
+Invalidate or refresh aggregates when new telemetry arrives.
+
+Avoid unnecessary Firestore reads.
+
+---
+
+# 33. FIRESTORE STRUCTURE
+
+Use a scalable structure such as:
+
+```text
+users/{userId}/telemetry/{eventId}
+
+users/{userId}/analytics_daily/{date}
+
+users/{userId}/analytics_weekly/{weekId}
+
+users/{userId}/analytics_monthly/{monthId}
+```
+
+Keep raw events separate from aggregated analytics.
+
+Do not expose another user's analytics through client queries.
+
+---
+
+# 34. FIRESTORE SECURITY
+
+All analytics data must be scoped to the authenticated user.
+
+A user must never be able to:
+
+* read another user's telemetry
+* write another user's telemetry
+* modify another user's analytics
+* query global private telemetry
+
+Use Firebase Security Rules.
+
+Backend telemetry endpoints must validate authenticated user identity.
+
+Never trust a `userId` supplied blindly by the client.
+
+---
+
+# 35. FASTAPI TELEMETRY API
+
+Inspect the existing:
+
+`backend/app/api/telemetry.py`
+
+before modifying it.
+
+Reuse existing endpoints.
+
+Do not create duplicate routes.
+
+Implement only what is missing.
+
+Possible endpoints:
+
+```text
+POST /telemetry/events
+
+POST /telemetry/batch
+
+GET /analytics/daily
+
+GET /analytics/weekly
+
+GET /analytics/monthly
+
+GET /analytics/trends
+```
+
+Use authentication.
+
+Validate payloads with Pydantic models.
+
+Reject malformed events.
+
+---
+
+# 36. BATCHING
+
+Mobile clients may generate many events.
+
+Support batched telemetry uploads.
+
+Example:
+
+```json
+{
+  "events": [
+    {},
+    {},
+    {}
+  ]
+}
+```
+
+Limit batch size.
+
+Retry failed batches safely.
+
+Do not duplicate successfully uploaded events.
+
+---
+
+# 37. ANALYTICS CACHING
+
+The Analytics screen should not trigger a full recomputation every time it opens.
+
+Use:
+
+```text
+local cache
++
+Firestore aggregates
++
+incremental updates
+```
+
+Refresh intelligently.
+
+---
+
+# 38. TESTING
+
+Add comprehensive tests.
+
+### Telemetry
+
+* event creation
+* validation
+* deduplication
+* batching
+* offline queue
+* retry
+
+### Task analytics
+
+* completion rate
+* velocity
+* on-time completion
+* overdue handling
+
+### Focus
+
+* duration
+* pause handling
+* abandoned sessions
+* completion rate
+
+### Notifications
+
+* sent
+* opened
+* ignored
+* snoozed
+* completed
+
+### Energy
+
+* low
+* medium
+* high
+* aggregation
+
+### Habits
+
+* current streak
+* longest streak
+* missed day
+* timezone
+
+### Rescheduling
+
+* reschedule count
+* rate
+* category aggregation
+
+### Aggregation
+
+* daily
+* weekly
+* monthly
+* timezone
+
+### Cold start
+
+* zero data
+* insufficient data
+* partial data
+
+---
+
+# 39. PERFORMANCE TESTING
+
+Verify that Analytics does not cause excessive Firestore reads.
+
+Test:
+
+```text
+10 events
+100 events
+1,000 events
+10,000 events
+```
+
+The UI should remain responsive.
+
+Do not load all raw telemetry into the client.
+
+---
+
+# 40. ACCEPTANCE CRITERIA
+
+Phase 8 is complete only when:
+
+### Telemetry
+
+* [ ] Task telemetry works.
+* [ ] Focus telemetry works.
+* [ ] Reminder telemetry integrates with Phase 7.
+* [ ] Kairo interaction telemetry works.
+* [ ] Mood logging works.
+* [ ] Energy logging works.
+* [ ] Habit telemetry works.
+* [ ] Rescheduling telemetry works.
+
+### Analytics
+
+* [ ] Task completion metrics work.
+* [ ] Task velocity works.
+* [ ] Focus duration metrics work.
+* [ ] Productivity by hour works.
+* [ ] Productivity by weekday works.
+* [ ] Notification interaction analytics work.
+* [ ] Kairo analytics work.
+* [ ] Mood/energy trends work.
+* [ ] Habit streaks work.
+* [ ] Rescheduling patterns work.
+
+### Reports
+
+* [ ] Daily summary cards work.
+* [ ] Weekly report works.
+* [ ] Monthly insights work.
+* [ ] Productivity heatmap works.
+* [ ] Trend graphs work.
 
 ### Reliability
 
-* [ ] Notification failures never crash the application.
-* [ ] Permission denial has graceful fallback.
-* [ ] Remote push failure has graceful fallback.
-* [ ] Firestore synchronization failure has graceful fallback.
+* [ ] Offline telemetry is queued.
+* [ ] Offline telemetry synchronizes after reconnect.
+* [ ] Duplicate events are prevented.
+* [ ] Timezones are handled correctly.
+* [ ] Missing/invalid data does not crash analytics.
+
+### Security
+
+* [ ] Users can only access their own analytics.
+* [ ] Backend validates authenticated identity.
+* [ ] Firestore rules protect telemetry.
+* [ ] No secrets are stored in telemetry.
+
+### ML Preparation
+
+* [ ] Procrastination-related behavioral features are collected.
+* [ ] Rescheduling features are collected.
+* [ ] Reminder-response features are collected.
+* [ ] Energy/task relationship data is collected.
+* [ ] Focus behavior is collected.
+* [ ] Dataset schema is documented.
+
+**Do NOT train ML models in Phase 8.**
 
 ---
 
-# 36. IMPORTANT IMPLEMENTATION ORDER
+# 41. DEFINITION OF DONE
 
-Implement in this exact order:
+Before declaring Phase 8 complete:
+
+Run:
 
 ```text
-1. Notification types
-        ↓
-2. Permission service
-        ↓
-3. Local notification service
-        ↓
-4. Reminder scheduler
-        ↓
-5. Firestore reminder model
-        ↓
-6. Task/reminder synchronization
-        ↓
-7. Notification Center
-        ↓
-8. Notification preferences
-        ↓
-9. Snooze
-        ↓
-10. Missed reminder logic
-        ↓
-11. Smart reminder rules
-        ↓
-12. Device registration
-        ↓
-13. FCM/Expo remote push
-        ↓
-14. Web notifications
-        ↓
-15. Offline reconciliation
-        ↓
-16. Analytics events
-        ↓
-17. Tests
+npm run lint:types
+npm run build
+npm test
 ```
 
-Do not skip directly to AI-based smart reminders.
+Also run the FastAPI test suite.
 
-Build the deterministic notification foundation first.
+Verify:
+
+```text
+0 TypeScript errors
+
+0 failing tests
+
+0 production build errors
+```
+
+Perform manual testing for:
+
+```text
+Task creation
+      ↓
+Telemetry generated
+      ↓
+Firestore
+      ↓
+Analytics aggregation
+      ↓
+Analytics View
+```
+
+Then test:
+
+```text
+Offline activity
+      ↓
+Local queue
+      ↓
+Reconnect
+      ↓
+Telemetry synchronization
+      ↓
+Analytics update
+```
+
+Finally test:
+
+```text
+Timezone = Asia/Kolkata
+Timezone = another supported timezone
+```
+
+and verify that day/hour aggregation remains correct.
 
 ---
 
-# 37. FINAL ARCHITECTURAL PRINCIPLE
+# 42. FINAL IMPLEMENTATION REPORT
 
-Saarathi's notification system should follow:
-
-```text
-LOCAL FIRST
-     +
-REMOTE WHEN NECESSARY
-     +
-OFFLINE SAFE
-     +
-CROSS DEVICE
-     +
-COST FREE
-     +
-USER CONTROLLED
-```
-
-The notification system must be an infrastructure layer that Kairo can intelligently use later.
-
-Do not tightly couple Kairo to notification delivery.
-
-The final architecture should allow future ML models to recommend reminder times without requiring a rewrite of the notification engine.
-
-After implementation, run the complete test suite, TypeScript checks, linting, and production build.
-
-Then provide a concise implementation report containing:
+After implementation, provide a concise report containing:
 
 1. Files created
 2. Files modified
-3. Dependencies added
-4. Firestore schema changes
-5. Notification architecture
-6. Free services used
-7. Environment variables required
-8. Tests performed
-9. Known platform limitations
-10. Remaining work for Phase 8
+3. Existing code reused
+4. Telemetry event taxonomy
+5. Firestore schema
+6. Analytics aggregation architecture
+7. Metrics implemented
+8. Charts/reports implemented
+9. Offline telemetry strategy
+10. Privacy considerations
+11. Security rules changes
+12. Dependencies added
+13. Tests performed
+14. Build/type-check results
+15. Known limitations
+16. Phase 9 ML-ready features collected
 
-Do not claim Phase 7 is complete unless the acceptance criteria above have actually been verified.
+Do not claim completion unless the acceptance criteria have actually been verified.
+
+---
+
+# IMPORTANT
+
+Do not over-engineer Phase 8.
+
+The purpose of this phase is:
+
+```text
+COLLECT CLEAN DATA
+        ↓
+AGGREGATE IT CORRECTLY
+        ↓
+VISUALIZE IT CLEARLY
+        ↓
+PREPARE FOR ML
+```
+
+Do not implement:
+
+* XGBoost
+* Random Forest
+* KMeans
+* Procrastination prediction
+* ML-based scheduling
+* ML-based energy prediction
+* SHAP explanations
+
+Those belong to the next intelligence phase.
+
+Build Phase 8 as the **data foundation that makes those systems possible later**.
