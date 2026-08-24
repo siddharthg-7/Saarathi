@@ -237,6 +237,7 @@ export interface MLBehavioralFeatureVector {
 }
 
 export interface AnalyticsData {
+  userId?: string;
   completedTasksCount: number;
   totalTasksCount: number;
   focusScore: number;

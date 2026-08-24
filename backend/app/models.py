@@ -4,16 +4,123 @@ from typing import List, Optional, Dict, Any
 class RiskPredictionRequest(BaseModel):
     id: str
     title: str
-    category: str
+    category: Optional[str] = "General"
+    priority: Optional[str] = "Medium"
     postponeCount: int = 0
     energyRequired: Optional[str] = "Medium"
     difficulty: Optional[int] = 3
+    estimatedDuration: Optional[int] = 30
+    deadline: Optional[str] = None
+    createdAt: Optional[str] = None
 
 class RiskPredictionResponse(BaseModel):
     taskId: str
     skipProbability: float
     delayProbability: float
+    completionProbability: float = 70.0
     highRisk: bool
+    riskLevel: str = "medium"  # "low" | "medium" | "high" | "critical"
+    contributingFactors: List[str] = Field(default_factory=list)
+    recommendedAction: Optional[str] = None
+    isColdStart: bool = True
+
+class BatchRiskPredictionRequest(BaseModel):
+    tasks: List[RiskPredictionRequest]
+    userId: Optional[str] = None
+    eventsCount: Optional[int] = None
+
+class BatchRiskPredictionResponse(BaseModel):
+    predictions: List[RiskPredictionResponse]
+    highRiskCount: int
+    isColdStart: bool = True
+
+class OptimalTimeSlotModel(BaseModel):
+    dayOfWeek: int
+    dayName: str
+    startHour: int
+    endHour: int
+    label: str
+    energyFit: str  # "high" | "medium" | "low"
+    averageProductivityScore: int
+
+class EnergyClusterModel(BaseModel):
+    clusterId: int
+    name: str  # e.g., "Peak Deep Work", "Afternoon Execution", "Evening Wind Down"
+    hours: List[int]
+    averageProductivityScore: float
+    averageFocusMinutes: float
+    recommendedEnergyType: str
+
+class EnergyClusterRequest(BaseModel):
+    userId: Optional[str] = None
+    hourlyStats: Optional[List[Dict[str, Any]]] = None
+    events: Optional[List[Dict[str, Any]]] = None
+
+class EnergyClusterResponse(BaseModel):
+    userId: str
+    clusters: List[EnergyClusterModel]
+    optimalTimeSlots: List[OptimalTimeSlotModel]
+    dominantPeakHour: int
+    isColdStart: bool = True
+
+class BurnoutDetectionRequest(BaseModel):
+    userId: Optional[str] = None
+    recentDailyStats: Optional[List[Dict[str, Any]]] = None
+    recentTasks: Optional[List[Dict[str, Any]]] = None
+    recentEvents: Optional[List[Dict[str, Any]]] = None
+
+class BurnoutDetectionResponse(BaseModel):
+    userId: str
+    burnoutRiskScore: float  # 0 to 100
+    anomalyDetected: bool
+    riskLevel: str  # "low" | "moderate" | "high"
+    contributingIndicators: List[str]
+    workloadTrend: str  # "increasing" | "stable" | "decreasing"
+    recommendations: List[str]
+    isColdStart: bool = True
+
+class DailyForecastModel(BaseModel):
+    date: str
+    dayOfWeek: int
+    dayName: str
+    predictedTasksCompleted: int
+    predictedFocusMinutes: int
+    confidenceLower: float
+    confidenceUpper: float
+
+class ProductivityForecastRequest(BaseModel):
+    userId: Optional[str] = None
+    historicalDailyStats: Optional[List[Dict[str, Any]]] = None
+    forecastDaysCount: int = 7
+
+class ProductivityForecastResponse(BaseModel):
+    userId: str
+    forecastDays: List[DailyForecastModel]
+    expectedWeeklyCompleted: int
+    expectedWeeklyFocusMinutes: int
+    trendDirection: str  # "upward" | "steady" | "downward"
+    isColdStart: bool = True
+
+class TaskClusterItemModel(BaseModel):
+    id: str
+    title: str
+    category: Optional[str] = None
+    tags: Optional[List[str]] = Field(default_factory=list)
+
+class TaskSemanticClusterRequest(BaseModel):
+    tasks: List[TaskClusterItemModel]
+    numClusters: Optional[int] = None
+
+class TaskClusterModel(BaseModel):
+    clusterId: int
+    topicName: str
+    keywords: List[str]
+    taskIds: List[str]
+    taskCount: int
+
+class TaskSemanticClusterResponse(BaseModel):
+    clusters: List[TaskClusterModel]
+    totalTasks: int
 
 class TelemetryEventModel(BaseModel):
     id: Optional[str] = None

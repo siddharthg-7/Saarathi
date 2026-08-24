@@ -21,4 +21,5 @@ export * from './kairo';
 export * from './analytics';
 export * from './notification';
 export * from './telemetry';
+export * from './ml';
 

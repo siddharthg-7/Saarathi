@@ -29,6 +29,7 @@ import {
   LogSource,
 } from '@saarathi/types';
 import { toast } from 'react-toastify';
+import { MLInsightsCard } from '../components/common/MLInsightsCard';
 
 export type TimeRange = 'today' | '7d' | '30d';
 
@@ -573,7 +574,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
       </div>
 
-      {/* 7. Quick Mood & Energy Logger Widget */}
+      {/* 7. Machine Learning Predictive Intelligence (Phase 9) */}
+      <MLInsightsCard userId={analytics.userId || analytics.daily?.userId || 'default_user'} />
+
+      {/* 8. Quick Mood & Energy Logger Widget */}
       <div className="p-6 rounded-3xl bg-gray-900/90 border border-white/10 space-y-4 shadow-xl">
         <div className="flex items-center justify-between">
           <div>
