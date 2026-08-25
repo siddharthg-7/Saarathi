@@ -1611,3 +1611,5 @@ Do not implement:
 Those belong to the next intelligence phase.
 
 Build Phase 8 as the **data foundation that makes those systems possible later**.
+
+tHI IS THE ABOVE PROMPT YOU SHOULD FOLLOW 
