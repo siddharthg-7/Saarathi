@@ -363,31 +363,61 @@ MODEL FACTS → XAI (Local Decision Attribution & Behavioral Evidence) → KAIRO
 ---
 
 ## Phase 11 — Long-Term Memory
-**Objective:** Persistent semantic memory across all past interactions and notes.  
-**Status:** 📋 Planned
+**Objective:** Persistent semantic memory across all past interactions, brain dumps, notes, and preferences.  
+**Status:** ✅ Completed (`2026-08-25`)  
+**Outcome:** Production-ready hybrid semantic retrieval (dense 384-dimensional pgvector cosine similarity + full-text search with normalized hybrid scoring), zero hallucinations, strict user isolation, and complete user management UI.
 
 ### Architecture Flow
 ```text
-Chats / Notes / Brain Dumps / Goals / Tasks
-                │
-                ▼
-  Sentence Transformer embeddings
-                │
-                ▼
-       Supabase PGVector
-                │
-                ▼
-          Hybrid Search
-                │
-                ▼
-           LLM Context
+Tasks / Notes / Brain Dumps / Goals / Kairo Chats
+                         │
+                         ▼
+                Memory Extraction
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+              ▼                     ▼
+        Text / Metadata        Embedding (all-MiniLM-L6-v2, 384d)
+              │                     │
+              └──────────┬──────────┘
+                         ▼
+                Supabase PostgreSQL
+                    + pgvector
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+       Vector Similarity       Full Text Search
+         (semantic)             (keyword)
+              │                     │
+              └──────────┬──────────┘
+                         ▼
+           Hybrid Score Ranker (0.7 * S + 0.3 * K)
+                         │
+                         ▼
+       Token-Bounded Context Builder (maxTokens=600)
+                         │
+                         ▼
+                 Kairo LLM Prompt
 ```
 
-### Deliverables
-- [ ] Embedding generation pipeline
-- [ ] Vector database setup (Supabase PGVector / Pinecone)
-- [ ] Hybrid search (Semantic vector similarity + Full-text BM25)
-- [ ] Dynamic LLM context injection based on relevant past history
+### Deliverables & Implementation
+- [x] **Database Schema & SQL Migration**: `docs/supabase_memory_schema.sql` with `vector(384)`, HNSW cosine index, Full-Text GIN index, RLS user isolation, and `match_memories` RPC function — `2026-08-25`
+- [x] **Embedding Pipeline**: `EmbeddingProvider` interface with fast dense semantic vectorizer, SHA-256 content hashing, and duplicate prevention — `2026-08-25`
+- [x] **Supabase Vector Store & Local Fallback**: `SupabaseMemoryStore` with HTTP PostgREST/RPC integration, zero-dependency offline vector caching, and strict user isolation (`user_id == auth_uid`) — `2026-08-25`
+- [x] **Hybrid Search Engine**: `HybridSearchEngine` combining dense vector cosine similarity and full-text keyword BM25 relevancy (`hybridScore = 0.7 * semantic + 0.3 * keyword`) with metadata filtering — `2026-08-25`
+- [x] **Intent Detection & Context Builder**: `MemoryIntentDetector` classifying retrieval vs simple commands, explicit memory capture (`CREATE_MEMORY`), and `MemoryContextBuilder` injecting token-budgeted memory context blocks into Kairo's prompt — `2026-08-25`
+- [x] **API Endpoints**: `/v1/memory/index`, `/v1/memory/search`, `/v1/memory`, `/v1/memory/{id}`, `/v1/memory/stats`, `/v1/memory/clear` — `2026-08-25`
+- [x] **Frontend State & Components**:
+  - `@saarathi/types`: `Memory`, `HybridSearchResult`, `MemoryStats`
+  - `@saarathi/api`: `memoryApi` with full CRUD, search, and stats
+  - `@saarathi/store`: `useMemoryStore` Zustand store
+  - `MemoryProvenanceBadge`: Citation badges with confidence percentages and provenance inspector modal
+  - `MemoryManagementView`: Full user control UI in Settings (view, search, add, edit, delete, clear all, toggle engine)
+  - `AIChatView`: Assistant message bubbles render live retrieved memory citations
+- [x] **Verification & Test Coverage**:
+  - 40 backend pytest tests passing (dimensions, hashing, deduplication, hybrid scoring, metadata filters, isolation, golden fixtures, API endpoints)
+  - 24 frontend Vitest test suites (95 unit tests) passing
+  - `npm run lint:types` (0 errors) and `npm run build` production bundle passing — `2026-08-25`
 
 ---
 

@@ -12,5 +12,6 @@ export * from './syncService';
 export * from './notifications';
 export * from './telemetry';
 export * from './analytics';
+export * from './memoryApi';
 export * from './config/env';
 

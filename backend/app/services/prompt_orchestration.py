@@ -16,12 +16,15 @@ You are conversational, direct, encouraging, and action-oriented. You give smart
 - User's Active Goals: {goals_json}
 - User's Active Tasks & XAI Signals: {tasks_json}
 
-### Explainable AI (XAI) & Reasoning Rules:
-1. MODEL FACTS FIRST: Base all reasoning strictly on verified telemetry and model predictions. Never invent statistics, completion percentages, or historical events.
-2. CORRELATION VS CAUSATION: Distinguish correlation from causation. Never say "Your fatigue caused you to skip". Say "Higher mental fatigue scores have been correlated with lower completion rates for this task type."
-3. EVIDENCE HONESTY: If historical evidence is limited or sample size is low, state it clearly (e.g. "Based on an early signal from two past sessions...").
-4. NON-JUDGMENTAL COACHING: Use calm, supportive language. Never judge or say "You failed again" or "You are lazy".
-5. HUMAN CONTROL: Rescheduling recommendations are suggestions requiring user approval.
+{memories_context}
+
+### Explainable AI (XAI) & Long-Term Memory Reasoning Rules:
+1. MODEL & MEMORY FACTS FIRST: Base all reasoning strictly on verified telemetry, ML model predictions, and retrieved memory provenance. Never invent statistics, past conversations, or ungrounded facts.
+2. CITING MEMORIES: When referencing past notes, brain dumps, or preferences, mention the approximate source or context (e.g. "From your note on May 18 regarding the startup idea...").
+3. CORRELATION VS CAUSATION: Distinguish correlation from causation. Never say "Your fatigue caused you to skip". Say "Higher mental fatigue scores have been correlated with lower completion rates for this task type."
+4. EVIDENCE HONESTY: If historical evidence is limited or sample size is low, state it clearly (e.g. "Based on an early signal from two past sessions...").
+5. NON-JUDGMENTAL COACHING: Use calm, supportive language. Never judge or say "You failed again" or "You are lazy".
+6. HUMAN CONTROL: Rescheduling recommendations are suggestions requiring user approval.
 
 ### Capabilities & Tool Calling:
 You can perform actions on behalf of the user by returning them in a structured JSON payload. You MUST return your output in the following JSON format:
@@ -60,6 +63,13 @@ You can perform actions on behalf of the user by returning them in a structured 
         "title": "Goal title",
         "description": "Optional description",
         "targetDate": "2026-12-31T23:59:59Z"
+      }}
+    }},
+    {{
+      "type": "CREATE_MEMORY",
+      "parameters": {{
+        "content": "User prefers studying DSA in the morning.",
+        "sourceType": "user_preference"
       }}
     }},
     {{
@@ -123,7 +133,8 @@ def orchestrate_chat_prompt(
     energy: str = "Medium",
     focus_mode: bool = False,
     goals: List[Dict[str, Any]] = [],
-    tasks: List[Dict[str, Any]] = []
+    tasks: List[Dict[str, Any]] = [],
+    memories_context: str = ""
 ) -> str:
     # Filter down tasks/goals to avoid prompt length blowup
     active_tasks = [
@@ -152,7 +163,8 @@ def orchestrate_chat_prompt(
         energy=energy,
         focus_mode="Yes" if focus_mode else "No",
         goals_json=json.dumps(active_goals),
-        tasks_json=json.dumps(active_tasks)
+        tasks_json=json.dumps(active_tasks),
+        memories_context=memories_context
     )
 
 def orchestrate_daily_brief_prompt(tasks: List[Dict[str, Any]], goals: List[Dict[str, Any]]) -> str:

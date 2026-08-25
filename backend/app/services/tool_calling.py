@@ -172,6 +172,27 @@ def execute_single_action(uid: str, action: Dict[str, Any]) -> Optional[Dict[str
                 "updates": updates
             }
                 
+        elif action_type == "CREATE_MEMORY":
+            content = params.get("content")
+            if not content:
+                return None
+            source_type = params.get("sourceType", "user_preference")
+            from app.services.memory.memory_service import MemoryService
+            from app.models import MemoryCreateRequest
+            mem = MemoryService.index_memory(
+                uid=uid,
+                req=MemoryCreateRequest(
+                    sourceType=source_type,
+                    content=content,
+                    importance=0.8
+                )
+            )
+            return {
+                "actionType": "CREATE_MEMORY",
+                "memoryId": mem.id,
+                "content": mem.content
+            }
+                
         elif action_type == "START_TASK":
             # START_TASK just instructs the client to run focus mode on a task
             task_id = params.get("taskId")

@@ -15,6 +15,13 @@ from app.services.firestore_service import (
 from app.services.prompt_orchestration import orchestrate_chat_prompt, orchestrate_daily_brief_prompt
 from app.services.ai_service import call_groq_chat, call_gemini
 from app.services.tool_calling import parse_and_execute_tools
+from app.services.memory import (
+    MemoryIntentDetector,
+    hybrid_search_engine,
+    MemoryContextBuilder,
+    MemoryService,
+)
+from app.models import MemoryCreateRequest, HybridSearchResultItem
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +49,7 @@ class ChatResponse(BaseModel):
     message: str = ""
     suggestedActions: List[SuggestedAction] = []
     timestamp: str = ""
+    retrievedMemories: Optional[List[HybridSearchResultItem]] = None
     
     # Backward compatibility fields
     reply: str = ""
@@ -77,6 +85,26 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
             location = client_context.get("currentLocation", "Unknown")
             energy = client_context.get("currentEnergy", "Medium")
             focus_mode = client_context.get("activeFocusMode", False)
+
+            # Check explicit memory creation
+            is_explicit, explicit_fact = MemoryIntentDetector.detect_explicit_memory(message)
+            if is_explicit and explicit_fact:
+                MemoryService.index_memory(
+                    uid=uid,
+                    req=MemoryCreateRequest(
+                        sourceType="user_preference",
+                        content=explicit_fact,
+                        importance=0.9
+                    )
+                )
+
+            # Retrieve relevant long-term memories if intent requires memory
+            memories_context = ""
+            retrieved_memories = []
+            if MemoryIntentDetector.requires_memory_retrieval(message):
+                search_res = hybrid_search_engine.search(uid=uid, query=message, match_count=5)
+                retrieved_memories = search_res.results
+                memories_context = MemoryContextBuilder.build_context(retrieved_memories)
             
             tasks = get_user_tasks(uid)
             goals = get_user_goals(uid)
@@ -87,7 +115,8 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
                 energy=energy,
                 focus_mode=focus_mode,
                 goals=goals,
-                tasks=tasks
+                tasks=tasks,
+                memories_context=memories_context
             )
             
             messages = [{"role": "system", "content": system_prompt}]
@@ -171,13 +200,34 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
     # 2. Get recent chat history
     history = get_chat_history(uid, limit=10)
     
+    # Check explicit memory creation
+    is_explicit, explicit_fact = MemoryIntentDetector.detect_explicit_memory(payload.message)
+    if is_explicit and explicit_fact:
+        MemoryService.index_memory(
+            uid=uid,
+            req=MemoryCreateRequest(
+                sourceType="user_preference",
+                content=explicit_fact,
+                importance=0.9
+            )
+        )
+
+    # Retrieve relevant long-term memories if intent requires memory
+    memories_context = ""
+    retrieved_memories = []
+    if MemoryIntentDetector.requires_memory_retrieval(payload.message):
+        search_res = hybrid_search_engine.search(uid=uid, query=payload.message, match_count=5)
+        retrieved_memories = search_res.results
+        memories_context = MemoryContextBuilder.build_context(retrieved_memories)
+
     # 3. Build Kairo system prompt containing state
     system_prompt = orchestrate_chat_prompt(
         location=location,
         energy=energy,
         focus_mode=focus_mode,
         goals=goals,
-        tasks=tasks
+        tasks=tasks,
+        memories_context=memories_context
     )
     
     # 4. Construct messages payload
@@ -232,6 +282,7 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
         message=cleaned_reply,
         suggestedActions=actions,
         timestamp=timestamp,
+        retrievedMemories=retrieved_memories if retrieved_memories else None,
         reply=cleaned_reply,
         suggestedAction=actions[0].actionType if actions else ""
     )

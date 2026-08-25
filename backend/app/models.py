@@ -434,3 +434,114 @@ class HealthCheckResponse(BaseModel):
     status: str
     service: str
     version: str
+
+# -------------------------------------------------------------
+# Phase 11 — Long-Term Memory & Hybrid Semantic Retrieval Models
+# -------------------------------------------------------------
+
+MemorySourceType = Literal[
+    'kairo_chat',
+    'note',
+    'brain_dump',
+    'goal',
+    'task',
+    'task_history',
+    'analytics_insight',
+    'user_preference'
+]
+
+class MemoryMetadataModel(BaseModel):
+    category: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    sourceId: Optional[str] = None
+    taskId: Optional[str] = None
+    goalId: Optional[str] = None
+    projectId: Optional[str] = None
+    date: Optional[str] = None
+    timezone: Optional[str] = None
+    language: Optional[str] = "en"
+    importance: Optional[float] = None
+
+class MemoryItemModel(BaseModel):
+    id: str
+    userId: str
+    sourceType: MemorySourceType
+    sourceId: Optional[str] = None
+    content: str
+    summary: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    importance: float = 0.5
+    confidence: float = 1.0
+    contentHash: Optional[str] = None
+    embeddingModel: str = "all-MiniLM-L6-v2"
+    embeddingVersion: str = "1.0.0"
+    createdAt: str
+    updatedAt: str
+    lastAccessedAt: Optional[str] = None
+    validFrom: Optional[str] = None
+    validUntil: Optional[str] = None
+    isActive: bool = True
+    deletedAt: Optional[str] = None
+
+class MemoryCreateRequest(BaseModel):
+    sourceType: MemorySourceType
+    sourceId: Optional[str] = None
+    content: str
+    summary: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    importance: float = 0.5
+    confidence: float = 1.0
+    validFrom: Optional[str] = None
+    validUntil: Optional[str] = None
+
+class MemoryUpdateRequest(BaseModel):
+    content: Optional[str] = None
+    summary: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+    importance: Optional[float] = None
+    isActive: Optional[bool] = None
+
+class MemorySearchFilter(BaseModel):
+    sourceType: Optional[MemorySourceType] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+    minImportance: Optional[float] = None
+    isActive: Optional[bool] = True
+
+class MemorySearchRequest(BaseModel):
+    query: str
+    filter: Optional[MemorySearchFilter] = None
+    matchThreshold: float = 0.3
+    matchCount: int = 10
+    semanticWeight: float = 0.7
+    keywordWeight: float = 0.3
+
+class HybridSearchResultItem(BaseModel):
+    memoryId: str
+    userId: str
+    sourceType: MemorySourceType
+    sourceId: Optional[str] = None
+    content: str
+    summary: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    importance: float
+    confidence: float
+    semanticScore: float
+    keywordScore: float
+    hybridScore: float
+    createdAt: str
+
+class MemorySearchResponse(BaseModel):
+    query: str
+    results: List[HybridSearchResultItem]
+    totalMatches: int
+    retrievalLatencyMs: int
+
+class MemoryStatsResponse(BaseModel):
+    totalMemories: int
+    activeMemories: int
+    countsBySource: Dict[str, int]
+    embeddingModel: str
+    dimensions: int

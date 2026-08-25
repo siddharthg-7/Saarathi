@@ -1,4 +1,5 @@
 import os
+import json
 import time
 import httpx
 import logging
@@ -41,20 +42,18 @@ gemini_limiter = TokenBucketRateLimiter(capacity=10.0, refill_rate=10.0 / 60.0)
 
 async def call_groq_chat(
     messages: List[Dict[str, str]],
-    model: str = "llama-3.3-70b-specdec", # Fallback to standard Groq model
+    model: str = "openai/gpt-oss-120b",
     temperature: float = 0.7,
     response_format: Optional[Dict[str, Any]] = None
 ) -> str:
     """
-    Call Groq API with Llama 3.3.
+    Call Groq API with ultra-fast LLM inference.
     """
     if not settings.GROQ_API_KEY:
         logger.warning("GROQ_API_KEY is not configured.")
         return "Groq API Key not configured. (Mock response)"
 
-    # We use llama-3.3-70b-versatile as standard model
-    # Wait, let's use a very standard model like llama-3.3-70b-versatile or llama3-8b-8192
-    model_name = "llama-3.3-70b-versatile" if "llama-3.3" in model else model
+    model_name = "openai/gpt-oss-120b" if ("llama-3.3" in model or "specdec" in model) else model
     
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
@@ -84,17 +83,17 @@ async def call_groq_chat(
 
 async def call_groq_chat_stream(
     messages: List[Dict[str, str]],
-    model: str = "llama-3.3-70b-specdec",
+    model: str = "openai/gpt-oss-120b",
     temperature: float = 0.7
 ):
     """
-    Call Groq API with Llama 3.3 and yield response chunks.
+    Call Groq API and yield response chunks.
     """
     if not settings.GROQ_API_KEY:
         logger.info("GROQ_API_KEY is not configured, triggering fallback.")
         raise ValueError("GROQ_API_KEY not configured")
 
-    model_name = "llama-3.3-70b-versatile" if "llama-3.3" in model else model
+    model_name = "openai/gpt-oss-120b" if ("llama-3.3" in model or "specdec" in model) else model
     
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
@@ -107,26 +106,23 @@ async def call_groq_chat_stream(
         "temperature": temperature,
         "stream": True
     }
-
+    
     async with httpx.AsyncClient(timeout=30.0) as client:
         async with client.stream("POST", url, headers=headers, json=payload) as response:
             if response.status_code != 200:
-                error_text = await response.aread()
-                logger.error(f"Groq API error {response.status_code}: {error_text}")
-                raise RuntimeError(f"Groq API error {response.status_code}: {error_text.decode('utf-8', errors='ignore')}")
-
+                error_body = await response.aread()
+                logger.error(f"Groq stream error {response.status_code}: {error_body.decode('utf-8')}")
+                raise HTTPException(status_code=response.status_code, detail="Groq streaming failed")
+                
             async for line in response.aiter_lines():
-                line = line.strip()
-                if not line:
-                    continue
-                if line == "data: [DONE]":
-                    break
                 if line.startswith("data: "):
+                    data_str = line[6:].strip()
+                    if data_str == "[DONE]":
+                        break
                     try:
-                        import json
-                        data = json.loads(line[6:])
-                        delta = data["choices"][0]["delta"]
-                        if "content" in delta:
+                        chunk = json.loads(data_str)
+                        delta = chunk["choices"][0].get("delta", {})
+                        if "content" in delta and delta["content"]:
                             yield delta["content"]
                     except Exception as e:
                         logger.error(f"Error parsing streaming chunk: {e} for line: {line}")
@@ -134,7 +130,7 @@ async def call_groq_chat_stream(
 async def call_gemini(
     contents: List[Dict[str, Any]],
     system_instruction: Optional[str] = None,
-    model: str = "gemini-1.5-flash",
+    model: str = "gemini-2.5-flash",
     temperature: float = 0.2
 ) -> str:
     """

@@ -6,4 +6,5 @@ export * from './useTaskStore';
 export * from './useAnalyticsStore';
 export * from './useMLStore';
 export * from './useXAIStore';
+export * from './useMemoryStore';
 export * from './data/initialData';

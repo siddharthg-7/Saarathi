@@ -1,11 +1,14 @@
+import { HybridSearchResult } from './memory';
+
 export interface KairoMessage {
   id: string;
   role: 'user' | 'assistant';
   message: string;
   timestamp: string;
   source?: string;
+  retrievedMemories?: HybridSearchResult[];
   suggestedActions?: {
-    actionType: 'START_TASK' | 'RESCHEDULE' | 'BREAK_DOWN';
+    actionType: 'START_TASK' | 'RESCHEDULE' | 'BREAK_DOWN' | string;
     taskId?: string;
     label: string;
   }[];

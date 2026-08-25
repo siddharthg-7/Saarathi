@@ -10,6 +10,7 @@ import {
   User,
 } from 'lucide-react';
 import { KairoMessage, Task, ViewType } from '@saarathi/types';
+import { MemoryProvenanceBadge } from '../components/memory/MemoryProvenanceBadge';
 
 interface AIChatViewProps {
   tasks: Task[];
@@ -148,6 +149,20 @@ export const AIChatView: React.FC<AIChatViewProps> = ({
                       <span>{act.label}</span>
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Long-Term Memory Provenance Badges */}
+              {msg.role === 'assistant' && msg.retrievedMemories && msg.retrievedMemories.length > 0 && (
+                <div className="pt-2 border-t border-divider space-y-1.5">
+                  <div className="text-[10px] font-semibold text-textSecondary uppercase tracking-wider">
+                    Retrieved Context:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {msg.retrievedMemories.map((mem, idx) => (
+                      <MemoryProvenanceBadge key={idx} memory={mem} />
+                    ))}
+                  </div>
                 </div>
               )}
 

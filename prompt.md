@@ -1,1442 +1,1830 @@
-# Phase 10 — Saarathi Explainable AI (XAI) Engine
+# Phase 11 — Saarathi Long-Term Memory & Hybrid Semantic Retrieval
 
 You are continuing development of **Saarathi**, an AI-powered personal productivity operating system.
 
 The AI assistant is called **Kairo**.
 
-Phase 7 — Notification & Smart Reminder Engine — is complete.
+The following phases have already been implemented:
 
-Phase 8 — Analytics & Behavioral Telemetry — is complete.
-
-Phase 9 — Behavioral ML / Prediction Engine — should already provide the predictive foundation.
+* Phase 7 — Notification & Smart Reminder Engine
+* Phase 8 — Analytics & Behavioral Telemetry
+* Phase 9 — Behavioral ML
+* Phase 10 — Explainable AI
 
 Your task is to implement:
 
-# Phase 10 — Explainable AI (XAI)
+# Phase 11 — Long-Term Memory
 
-The objective is to make Saarathi's AI predictions and scheduling recommendations **transparent, evidence-based, and understandable to the user**.
+The objective is to give Kairo persistent, searchable, user-scoped memory across:
+
+* Kairo conversations
+* Notes
+* Brain dumps
+* Goals
+* Tasks
+* Relevant task history
+* Productivity insights
+* User-created knowledge
+
+Kairo should be able to answer questions using relevant information from the user's past without requiring the user to manually repeat it.
 
 ---
 
 # 1. CORE PRINCIPLE
 
-Saarathi must never produce a black-box statement such as:
-
-> "You should move Gym to Tuesday."
-
-without being able to explain why.
-
-The architecture must be:
+Saarathi must distinguish between:
 
 ```text
-User Behavioral Data
-        ↓
-Phase 8 Telemetry
-        ↓
-Phase 9 ML Model
-        ↓
-Prediction
-        ↓
-Feature Contributions
-        ↓
-XAI Explanation Engine
-        ↓
-Kairo Natural Language Layer
-        ↓
-User
-```
-
-The most important rule:
-
-```text
-MODEL FACTS → XAI → KAIRO
-```
-
-NOT:
-
-```text
-MODEL PREDICTION → LLM GUESS
-```
-
-Kairo must never invent reasons that are not supported by the model output or verified behavioral statistics.
-
----
-
-# 2. FIRST STEP — INSPECT THE EXISTING SYSTEM
-
-Before writing code, inspect the existing implementation.
-
-Specifically inspect:
-
-```text
-Phase 8 telemetry
-Phase 8 analytics
-Phase 9 ML models
-Phase 9 feature engineering
-Phase 9 prediction APIs
-Phase 9 model storage
-Phase 9 model evaluation
-Task scheduling logic
-Kairo AI service
-Smart reminder service
-```
-
-Identify:
-
-* existing model names
-* prediction endpoints
-* feature names
-* feature schemas
-* prediction response structures
-* model versions
-* training datasets
-* existing analytics calculations
-* existing task scheduling APIs
-* existing Kairo API
-* existing authentication mechanism
-
-Do NOT create duplicate prediction infrastructure.
-
-Do NOT rename existing Phase 9 APIs unless absolutely necessary.
-
-Extend the existing architecture.
-
-Before implementation, create a short internal implementation plan based on the actual repository.
-
----
-
-# 3. XAI OBJECTIVE
-
-For every supported ML prediction, return:
-
-```text
-Prediction
-+
-Confidence / probability
-+
-Important contributing factors
-+
-Direction of contribution
-+
-Supporting behavioral evidence
-+
-Model metadata
-```
-
-Example:
-
-```json
-{
-  "prediction": {
-    "type": "task_completion",
-    "probability": 0.18,
-    "label": "high_skip_risk"
-  },
-
-  "contributors": [
-    {
-      "feature": "historical_completion_rate",
-      "value": 0.20,
-      "contribution": -0.31,
-      "direction": "negative"
-    },
-    {
-      "feature": "time_of_day",
-      "value": "21:00",
-      "contribution": -0.24,
-      "direction": "negative"
-    }
-  ],
-
-  "evidence": [
-    {
-      "metric": "Monday evening gym completion",
-      "value": "20%",
-      "sampleSize": 5
-    }
-  ],
-
-  "model": {
-    "name": "procrastination_model",
-    "version": "1.0.0"
-  }
-}
-```
-
-The exact schema should be adapted to the existing Phase 9 implementation.
-
----
-
-# 4. SUPPORTED XAI PREDICTIONS
-
-Implement XAI for the predictions that actually exist in Phase 9.
-
-Potential prediction types include:
-
-```text
-task_completion_probability
-procrastination_probability
-task_delay_probability
-energy_match
-schedule_recommendation
-reminder_timing
-```
-
-Do NOT implement explanations for models that do not exist.
-
-Do NOT fabricate model outputs.
-
----
-
-# 5. FEATURE IMPORTANCE
-
-Implement model-specific feature contribution analysis.
-
-For tree-based models such as:
-
-* XGBoost
-* Random Forest
-* LightGBM
-
-prefer a local explanation method such as **SHAP TreeExplainer** where technically appropriate.
-
-The objective is to explain an individual prediction, not merely provide global feature importance.
-
-Distinguish:
-
-```text
-Global importance
-```
-
-from:
-
-```text
-Local contribution
-```
-
-Example:
-
-Global:
-
-> Time of day is generally an important feature.
-
-Local:
-
-> For this particular task, the 9 PM start time contributed strongly toward the predicted delay risk.
-
-The second is what Kairo should use.
-
----
-
-# 6. DO NOT OVERSTATE MODEL EXPLANATIONS
-
-Feature contribution is not automatically causation.
-
-Never generate:
-
-> "Your fatigue caused you to skip the task."
-
-Instead:
-
-> "Higher fatigue scores have been associated with lower completion rates for this type of task in your recent history."
-
-Use careful language.
-
-Preferred terms:
-
-* contributed to the prediction
-* associated with
-* correlated with
-* was a strong signal
-* your recent history shows
-* increased the predicted probability
-* decreased the predicted probability
-
-Avoid:
-
-* caused
-* guaranteed
-* will definitely
-* always
-* never
-
-unless the underlying fact genuinely supports it.
-
----
-
-# 7. FEATURE CONTRIBUTION NORMALIZATION
-
-Different ML models may produce contributions on different scales.
-
-Create a normalized representation for the frontend and Kairo.
-
-Example:
-
-```text
-strong_positive
-positive
-neutral
-negative
-strong_negative
-```
-
-Possible internal representation:
-
-```text
-contribution
-absoluteContribution
-direction
-importanceRank
-```
-
-Do not hide the raw model value from the backend response.
-
-The frontend should receive both:
-
-```text
-raw contribution
+OPERATIONAL DATA
 ```
 
 and:
 
 ```text
-human-readable contribution strength
+SEMANTIC MEMORY
 ```
+
+Firebase/Firestore remains the primary operational database.
+
+Supabase PostgreSQL + pgvector becomes the semantic memory and retrieval layer.
+
+Architecture:
+
+```text
+                 SAARATHI
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+      Firestore              Supabase
+      Operational            Memory
+          │                     │
+      Tasks                  Memories
+      Users                  Embeddings
+      Habits                 Full Text
+      Reminders              Metadata
+      Goals
+          │                     │
+          └──────────┬──────────┘
+                     │
+                 Kairo API
+                     │
+              Hybrid Retrieval
+                     │
+              Context Builder
+                     │
+                    LLM
+```
+
+Do NOT migrate existing Firestore application data to Supabase unnecessarily.
 
 ---
 
-# 8. FEATURE METADATA REGISTRY
+# 2. FIRST STEP — INSPECT THE EXISTING SYSTEM
 
-Create a centralized feature metadata registry.
-
-Example:
+Before implementation, inspect:
 
 ```text
-historical_completion_rate
-time_of_day
-day_of_week
-task_duration
-task_priority
-energy_level
-notification_snooze_count
-reschedule_count
-recent_focus_duration
-deadline_distance
+Phase 8 telemetry architecture
+Phase 9 ML architecture
+Phase 10 XAI architecture
+Kairo AI service
+Kairo WebSocket service
+Firestore task schema
+Firestore notes schema
+Brain Dump implementation
+Goals implementation
+Chat history implementation
+Existing API package
+Existing FastAPI backend
+Existing authentication
+Existing environment configuration
 ```
 
-Each feature should have:
+Identify:
+
+* where Kairo conversations are stored
+* where notes are stored
+* where brain dumps are stored
+* where goals are stored
+* where tasks are stored
+* how Firebase user IDs are represented
+* how backend authentication works
+* how Kairo currently builds prompts
+* whether embeddings or vector infrastructure already exists
+
+Do NOT create duplicate storage systems.
+
+Extend the existing architecture.
+
+---
+
+# 3. MEMORY SOURCES
+
+Create a controlled memory-source taxonomy.
+
+Supported sources:
 
 ```text
-displayName
-description
-unit
-format
-positiveMeaning
-negativeMeaning
-privacyLevel
+kairo_chat
+note
+brain_dump
+goal
+task
+task_history
+analytics_insight
+user_preference
 ```
 
-Example:
+Do NOT automatically embed every piece of application data.
 
-```json
-{
-  "feature": "historical_completion_rate",
-  "displayName": "Historical completion rate",
-  "description": "How often you have completed similar tasks in comparable conditions.",
-  "unit": "percentage"
+Only store information that can provide useful long-term contextual value.
+
+---
+
+# 4. WHAT SHOULD BECOME MEMORY?
+
+Examples:
+
+### Good memory
+
+> User wants to become an AI engineer.
+
+### Good memory
+
+> User is building Saarathi as a personal productivity application.
+
+### Good memory
+
+> User prefers studying DSA in the morning.
+
+### Good memory
+
+> User mentioned a startup idea involving AI-powered education.
+
+### Good memory
+
+> User's goal is to complete a particular project by a certain date.
+
+### Poor memory
+
+> User opened the settings screen.
+
+### Poor memory
+
+> User clicked a button.
+
+### Poor memory
+
+> Temporary API error occurred.
+
+Do not turn meaningless telemetry into semantic memory.
+
+Phase 8 telemetry remains telemetry.
+
+---
+
+# 5. MEMORY DATA MODEL
+
+Create a strongly typed memory model.
+
+Suggested:
+
+```text id="2xy9z7"
+Memory {
+  id
+  userId
+
+  sourceType
+  sourceId
+
+  content
+  summary
+
+  embedding
+
+  metadata
+
+  importance
+  confidence
+
+  createdAt
+  updatedAt
+  lastAccessedAt
+
+  validFrom
+  validUntil
+
+  isActive
+  deletedAt
 }
 ```
 
-Do not hardcode feature explanations throughout the application.
+Adapt naming to the existing project conventions.
 
 ---
 
-# 9. BEHAVIORAL EVIDENCE
+# 6. MEMORY METADATA
 
-ML explanations should be supplemented with actual user-specific statistics from Phase 8.
+Metadata should include only useful retrieval information.
 
 Example:
 
-Prediction:
-
-```text
-Skip probability = 82%
+```json id="xukx1r"
+{
+  "sourceType": "brain_dump",
+  "category": "project",
+  "tags": [
+    "startup",
+    "AI",
+    "education"
+  ],
+  "createdAt": "...",
+  "importance": 0.8
+}
 ```
 
-Supporting evidence:
+Potential metadata:
 
 ```text
-Monday evening gym tasks:
-1 completed
-4 skipped
+category
+tags
+sourceType
+sourceId
+taskId
+goalId
+projectId
+date
+timezone
+language
+importance
 ```
 
-Then Kairo can say:
-
-> "You've completed only 1 of your last 5 Monday evening gym sessions."
-
-The evidence must come from actual telemetry.
-
-Do not manufacture examples.
+Do not store unnecessary personal information.
 
 ---
 
-# 10. MINIMUM SAMPLE SIZE
+# 7. USER ISOLATION
 
-This is extremely important.
+This is critical.
 
-Do not generate strong behavioral claims from tiny datasets.
-
-Example:
-
-If:
-
-```text
-sampleSize = 1
-```
-
-Do not say:
-
-> "You usually skip this."
-
-Instead:
-
-> "There isn't enough history yet to identify a reliable pattern."
-
-Create configurable minimum sample thresholds.
+Every memory MUST belong to exactly one authenticated user.
 
 Example:
 
-```text
-MIN_EVIDENCE_SAMPLE_SIZE
+```text id="ubn4l8"
+userId
 ```
 
-Do not blindly assume a fixed threshold is statistically sufficient.
+Never perform an unrestricted vector search across all users.
 
-Make the threshold configurable.
+Every retrieval query must include user scope.
+
+Correct:
+
+```text id="6y5u1s"
+WHERE user_id = authenticated_user_id
+```
+
+Incorrect:
+
+```text id="9u9j4v"
+search all memories
+then filter afterward
+```
+
+User isolation must happen at the database/query layer.
 
 ---
 
-# 11. CONFIDENCE HANDLING
+# 8. SUPABASE MEMORY DATABASE
+
+Use:
+
+**Supabase PostgreSQL + pgvector**
+
+Do not introduce Pinecone unless the existing project genuinely requires it.
+
+The goal is to minimize infrastructure complexity.
+
+Enable the PostgreSQL vector extension.
+
+Create a dedicated memory table.
+
+Example conceptual schema:
+
+```text id="q35qjy"
+memories
+
+id
+user_id
+source_type
+source_id
+content
+summary
+embedding
+search_vector
+metadata
+importance
+confidence
+created_at
+updated_at
+last_accessed_at
+valid_from
+valid_until
+is_active
+deleted_at
+```
+
+Use a vector column with the embedding dimension appropriate for the selected embedding model.
+
+Do NOT hardcode an incorrect dimension.
+
+Determine the dimension from the actual embedding model being used.
+
+---
+
+# 9. EMBEDDING MODEL
+
+Implement an abstraction around embedding generation.
+
+Do not tightly couple the entire application to one provider.
+
+Example interface:
+
+```text id="fbne4f"
+EmbeddingProvider
+
+generateEmbedding(text)
+generateEmbeddings(texts)
+getDimensions()
+```
+
+The implementation can use:
+
+**Sentence Transformers**
+
+as specified in the Saarathi architecture.
+
+The exact model should be selected based on:
+
+* embedding quality
+* model size
+* inference cost
+* deployment environment
+* latency
+
+Do not download an unnecessarily large model for a small personal application.
+
+---
+
+# 10. EMBEDDING PIPELINE
+
+The pipeline should be:
+
+```text id="q5f8ul"
+Memory Created
+      ↓
+Validate
+      ↓
+Normalize
+      ↓
+Generate Summary
+      ↓
+Generate Embedding
+      ↓
+Store Memory
+      ↓
+Store Search Vector
+      ↓
+Ready for Retrieval
+```
+
+Do not block normal task creation if embedding generation fails.
+
+Example:
+
+```text id="vup5b7"
+Task created
+      ↓
+Firestore succeeds
+      ↓
+Memory indexing begins asynchronously
+      ↓
+Embedding fails
+      ↓
+Task still exists
+      ↓
+Memory indexing retries later
+```
+
+Long-term memory must never become a single point of failure for Saarathi's core productivity functionality.
+
+---
+
+# 11. ASYNCHRONOUS MEMORY INDEXING
+
+Prefer asynchronous indexing for:
+
+* brain dumps
+* large notes
+* chat sessions
+* historical tasks
+* large documents
+
+Architecture:
+
+```text id="p9drfr"
+Firestore
+    ↓
+Memory indexing job
+    ↓
+Text processing
+    ↓
+Embedding
+    ↓
+Supabase
+```
+
+Use the existing backend job infrastructure if available.
+
+Do not introduce another queue system if one already exists.
+
+---
+
+# 12. TEXT NORMALIZATION
+
+Before embedding:
+
+* remove unnecessary formatting
+* normalize whitespace
+* preserve meaningful structure
+* preserve dates
+* preserve important names/entities
+* preserve task context
+
+Do not aggressively summarize away information needed for exact retrieval.
+
+Example:
+
+Original:
+
+> My startup idea is to create an AI assistant that helps rural students discover NSQF-aligned courses.
+
+Memory representation should retain the important semantic details.
+
+---
+
+# 13. MEMORY CHUNKING
+
+Do not embed enormous documents as one vector.
+
+For large content:
+
+```text id="s5v5e5"
+Document
+   ↓
+Chunk
+   ↓
+Chunk
+   ↓
+Chunk
+   ↓
+Embeddings
+```
+
+Each chunk should retain:
+
+```text id="5z4x0n"
+documentId
+chunkIndex
+sourceType
+sourceId
+```
+
+Use chunk sizes appropriate for the embedding model.
+
+Avoid arbitrary giant chunks.
+
+For short notes/tasks, keep the entire item as one memory where appropriate.
+
+---
+
+# 14. FULL-TEXT SEARCH
+
+Implement PostgreSQL full-text search alongside pgvector.
+
+Use PostgreSQL's native text-search capabilities.
+
+Create:
+
+```text id="7p9r2y"
+search_vector
+```
+
+based on:
+
+```text id="5x2v1u"
+content
+summary
+tags
+```
+
+Do not create a separate search engine for the initial implementation.
+
+---
+
+# 15. HYBRID SEARCH
+
+Kairo must search using BOTH:
+
+```text id="j0z4j5"
+Semantic similarity
+```
+
+and:
+
+```text id="d6x6yl"
+Keyword/full-text relevance
+```
+
+Architecture:
+
+```text id="xj5v7m"
+User Query
+     │
+     ├──────────────┐
+     │              │
+     ▼              ▼
+Embedding       Full Text
+     │              │
+     ▼              ▼
+Vector Search   BM25/FTS
+     │              │
+     └──────┬───────┘
+            ▼
+       Hybrid Ranking
+            │
+            ▼
+      Top Memories
+```
+
+---
+
+# 16. HYBRID RANKING
+
+Implement a transparent scoring function.
+
+For example:
+
+```text id="a7q0b2"
+hybridScore =
+    semanticWeight * semanticScore
+    +
+    keywordWeight * keywordScore
+```
+
+Make the weights configurable.
+
+Do not assume the first weights are optimal.
+
+Example configuration:
+
+```text id="h9p0yt"
+semanticWeight = 0.7
+keywordWeight = 0.3
+```
+
+These values should be easy to tune.
+
+Normalize scores before combining them if the underlying scoring systems use different ranges.
+
+---
+
+# 17. SEARCH FILTERS
+
+Every memory search should support:
+
+```text id="s8s7ac"
+userId
+sourceType
+date range
+category
+tags
+importance
+isActive
+```
+
+Example:
+
+> "What did I say about my startup idea three months ago?"
+
+Search can filter:
+
+```text id="cb3m7k"
+userId = current user
+date ≈ 3 months ago
+```
+
+while still using semantic similarity.
+
+---
+
+# 18. QUERY UNDERSTANDING
+
+Kairo should determine whether a request requires memory retrieval.
+
+Examples:
+
+### Memory required
+
+> What was that startup idea I mentioned three months ago?
+
+### Memory probably required
+
+> What did I say about my project?
+
+### Memory not necessarily required
+
+> Create a task for tomorrow.
+
+Avoid performing expensive vector searches for every simple command.
+
+---
+
+# 19. MEMORY RETRIEVAL PIPELINE
+
+Implement:
+
+```text id="6c72au"
+User Message
+      ↓
+Kairo Intent Detection
+      ↓
+Does this require memory?
+      ↓
+YES
+      ↓
+Query normalization
+      ↓
+Generate query embedding
+      ↓
+Vector search
+      ↓
+Full-text search
+      ↓
+Hybrid ranking
+      ↓
+Apply filters
+      ↓
+Remove duplicates
+      ↓
+Top-K memories
+      ↓
+Context compression
+      ↓
+LLM
+```
+
+---
+
+# 20. TOP-K RETRIEVAL
+
+Do not inject the entire memory database.
+
+Retrieve a configurable number of candidates.
+
+Example:
+
+```text id="u1yn6h"
+vector candidates = 20
+keyword candidates = 20
+final memories = 5–10
+```
+
+The exact values should be configurable.
+
+Do not assume more context is always better.
+
+---
+
+# 21. MEMORY RERANKING
+
+After hybrid retrieval, optionally rerank candidates.
+
+Possible architecture:
+
+```text id="4n4h4b"
+Vector + FTS
+      ↓
+Candidate set
+      ↓
+Reranker
+      ↓
+Top relevant memories
+```
+
+Do not add an expensive reranking model unless the project actually benefits from it.
+
+Start with hybrid scoring.
+
+---
+
+# 22. CONTEXT BUILDER
+
+Create a dedicated service:
+
+```text id="y7x1ap"
+memoryContextBuilder.ts
+```
+
+Its responsibility:
+
+1. Receive the user's query.
+2. Receive retrieved memories.
+3. Remove duplicates.
+4. Remove irrelevant memories.
+5. Respect token limits.
+6. Format memories clearly.
+7. Provide provenance.
+
+Example:
+
+```text id="u8fphm"
+Relevant memory:
+
+[Memory 1]
+Source: Brain Dump
+Date: 2026-05-18
+
+User discussed an AI education startup idea...
+
+[Memory 2]
+Source: Note
+Date: 2026-05-21
+
+The startup should help students discover...
+```
+
+Kairo can then answer.
+
+---
+
+# 23. MEMORY PROVENANCE
+
+Every retrieved memory should contain provenance.
+
+Example:
+
+```text id="8zv9v4"
+sourceType
+sourceId
+createdAt
+```
+
+Kairo should be able to say:
+
+> You mentioned this in a brain dump on May 18.
+
+Do not invent dates.
+
+If the source date is unavailable, don't claim one.
+
+---
+
+# 24. MEMORY CONFIDENCE
 
 Distinguish:
 
-```text
-prediction probability
+```text id="i7s9r0"
+retrieval relevance
 ```
 
 from:
 
-```text
-explanation confidence
+```text id="m4kqz4"
+factual certainty
 ```
 
-They are not necessarily the same thing.
+A highly similar memory is not automatically true forever.
 
-Example:
-
-```text
-Prediction:
-82% skip probability
-
-Evidence:
-5 historical observations
-
-Explanation confidence:
-Low / Limited evidence
-```
-
-The UI should not display:
-
-> "82% confidence"
-
-unless that is actually what the model metric represents.
-
-Use accurate terminology such as:
-
-> "Predicted skip probability: 82%"
-
-rather than incorrectly calling it confidence.
+Use metadata and validity periods.
 
 ---
 
-# 12. EXPLANATION QUALITY LEVEL
+# 25. MEMORY DECAY / VALIDITY
 
-Create explanation quality states.
+Some memories become outdated.
 
 Example:
 
-```text
-insufficient_data
-limited_evidence
-moderate_evidence
-strong_evidence
+```text id="r3o8vo"
+Current goal:
+Build Saarathi
 ```
 
-These should depend on:
+could later change.
 
-* available behavioral history
-* sample size
-* feature availability
-* model confidence/calibration where available
+Support:
 
-This prevents Saarathi from sounding overly certain when there is little evidence.
+```text id="d6s6bj"
+validFrom
+validUntil
+isActive
+```
+
+When a new memory contradicts an older preference or goal:
+
+* do not blindly delete the old memory
+* mark the old memory inactive or superseded when appropriate
+* preserve history where useful
+
+Example:
+
+```text id="x3nj9s"
+Old:
+User plans to build Project A.
+
+New:
+User abandoned Project A and started Project B.
+
+```
+
+Kairo should prefer the newer active memory.
 
 ---
 
-# 13. NATURAL LANGUAGE REASONING ENGINE
+# 26. MEMORY IMPORTANCE
 
-Create a deterministic XAI → natural-language layer.
+Create an importance score.
 
-The LLM should receive structured evidence rather than raw telemetry.
+Potential signals:
 
-Example input:
+```text id="1c0v8d"
+explicit user preference
+long-term goal
+repeated mention
+project information
+important deadline
+temporary task
+casual conversation
+```
 
-```json
+Explicit long-term preferences should receive higher importance than transient conversations.
+
+Do not let importance override semantic relevance completely.
+
+Use it as one ranking factor.
+
+---
+
+# 27. EXPLICIT MEMORY
+
+Allow users to explicitly tell Kairo:
+
+> Remember that I prefer studying DSA in the morning.
+
+Kairo should create a memory with:
+
+```text id="q1y4ck"
+sourceType = user_preference
+importance = high
+```
+
+Then acknowledge:
+
+> I'll remember that.
+
+Only persist explicit memory when the user clearly asks Kairo to remember something.
+
+Do not automatically store every conversational statement as permanent memory.
+
+---
+
+# 28. MEMORY MANAGEMENT UI
+
+Create a dedicated section:
+
+```text id="m9y58b"
+Settings
+   ↓
+Memory
+```
+
+Show:
+
+```text id="8qul5x"
+Kairo's Memory
+
+Preferences
+Goals
+Projects
+Important Notes
+Recent Memories
+```
+
+Allow:
+
+* view
+* search
+* edit
+* delete
+* deactivate
+
+The user must have control over persistent memory.
+
+---
+
+# 29. "WHY DOES KAIRO KNOW THIS?"
+
+For retrieved memories, optionally provide:
+
+```text id="g3d8l2"
+Why am I seeing this?
+
+Kairo found this in:
+Brain Dump
+May 18
+```
+
+This increases transparency.
+
+---
+
+# 30. MEMORY DELETION
+
+If a user deletes a memory:
+
+1. Remove/deactivate the semantic memory.
+2. Ensure it no longer appears in retrieval.
+3. Remove or invalidate its embedding.
+4. Preserve operational source data only if the source itself has not been deleted and policy permits re-indexing.
+
+If the user deletes the original note/brain dump/chat:
+
+```text id="8b3s5c"
+source deleted
+      ↓
+memory invalidated/deleted
+```
+
+Do not leave orphaned semantic memories containing deleted content.
+
+---
+
+# 31. FIRESTORE ↔ SUPABASE CONSISTENCY
+
+Firestore remains the source of truth for operational objects.
+
+Supabase memory index is a derived representation.
+
+Architecture:
+
+```text id="5s04jz"
+Firestore
+    │
+    │ source
+    ▼
+Memory Indexer
+    │
+    ▼
+Supabase
+```
+
+Never treat the vector index as the primary source for tasks, reminders, or authentication.
+
+---
+
+# 32. MEMORY INDEXING STATUS
+
+Track indexing state.
+
+Example:
+
+```text id="0ygr4r"
+not_indexed
+queued
+processing
+indexed
+failed
+deleted
+```
+
+This makes debugging much easier.
+
+---
+
+# 33. RETRY STRATEGY
+
+If embedding generation fails:
+
+```text id="3u8q3f"
+queued
+   ↓
+processing
+   ↓
+failed
+   ↓
+retry
+```
+
+Use exponential backoff.
+
+After a configurable number of failures:
+
+```text id="x8n0oe"
+failed_permanently
+```
+
+Log the reason.
+
+Do not block the main Saarathi application.
+
+---
+
+# 34. EMBEDDING COST / RESOURCE MANAGEMENT
+
+The memory architecture should remain compatible with the project's **free-first philosophy**.
+
+Avoid generating embeddings repeatedly for unchanged content.
+
+Store:
+
+```text id="v3e0a6"
+contentHash
+embeddingModel
+embeddingVersion
+```
+
+If:
+
+```text id="p5y6az"
+same contentHash
+same embedding model
+same embedding version
+```
+
+do not regenerate the embedding unnecessarily.
+
+---
+
+# 35. MODEL VERSIONING
+
+Every embedding should record:
+
+```text id="l8q4f0"
+embeddingModel
+embeddingVersion
+dimension
+```
+
+If the embedding model changes:
+
+```text id="s5o6qk"
+Model v1
+    ↓
+Model v2
+```
+
+the memory index should support controlled re-indexing.
+
+Do not mix vectors from incompatible dimensions in the same vector column.
+
+---
+
+# 36. KAIRO CONTEXT INJECTION
+
+Integrate memory retrieval into the existing Kairo pipeline.
+
+Current:
+
+```text id="v5l4hs"
+User Message
+    ↓
+Kairo
+    ↓
+LLM
+```
+
+New:
+
+```text id="dyjz3p"
+User Message
+    ↓
+Intent Detection
+    ↓
+Memory Retrieval
+    ↓
+Context Builder
+    ↓
+Kairo
+    ↓
+LLM
+```
+
+Only inject memory when relevant.
+
+---
+
+# 37. CONTEXT BUDGET
+
+Do not consume the entire LLM context window with memories.
+
+Create a configurable memory token budget.
+
+Example:
+
+```text id="4x8xj0"
+maxMemoryTokens
+```
+
+Select memories based on:
+
+```text id="m5q4xl"
+relevance
+importance
+recency
+diversity
+```
+
+Avoid injecting five memories that all contain the same information.
+
+---
+
+# 38. MEMORY DIVERSITY
+
+If the top results are duplicates:
+
+```text id="h7w0m2"
+Memory 1
+Memory 2
+Memory 3
+Memory 4
+```
+
+all saying essentially the same thing, keep the strongest relevant result and retrieve diverse supporting memories.
+
+This improves context quality.
+
+---
+
+# 39. KAIRO RESPONSE WITH MEMORY
+
+Example query:
+
+> Kairo, what was that startup idea I mentioned a few months ago?
+
+Kairo should retrieve relevant memories and answer:
+
+> You mentioned an AI education startup that would help students discover relevant learning and skilling opportunities. You first discussed the idea in a brain dump a few months ago and later added notes about making the recommendations personalized.
+
+If the evidence is incomplete:
+
+> I found two related memories, but I can't confirm the exact original idea from the available history.
+
+Do not hallucinate missing details.
+
+---
+
+# 40. MEMORY-AWARE TASK CREATION
+
+Memory should also help task creation.
+
+Example:
+
+> Create a task for my AI project.
+
+Kairo can retrieve the active project memory and understand which project the user means.
+
+But if multiple projects are plausible:
+
+> I found two active projects that could match "AI project." Which one do you mean?
+
+Do not silently choose an ambiguous memory.
+
+---
+
+# 41. SEARCH EXAMPLES TO TEST
+
+The implementation must support semantic queries such as:
+
+```text id="p2r5cm"
+"What was my startup idea?"
+
+"What did I say about Saarathi last month?"
+
+"What was that project I wanted to build?"
+
+"What were my goals for this semester?"
+
+"What did I decide about my study schedule?"
+
+"Why did I change my workout schedule?"
+```
+
+It must also support exact keyword queries:
+
+```text id="c7h4q0"
+"Saarathi"
+
+"Kairo"
+
+"NSQF"
+
+"DSA"
+
+"Firebase"
+```
+
+Hybrid search should perform well for both semantic and exact-match queries.
+
+---
+
+# 42. SEARCH QUALITY TESTING
+
+Create a fixed evaluation dataset.
+
+Each query should have expected relevant memories.
+
+Example:
+
+```text id="f8h3m9"
+Query:
+"What was my startup idea?"
+
+Expected:
+startup brain dump
+startup note
+
+Not expected:
+gym task
+notification history
+unrelated Kairo conversation
+```
+
+Measure:
+
+```text id="8a6d0x"
+Precision@K
+Recall@K
+```
+
+where practical.
+
+Do not optimize only for a subjective demo.
+
+---
+
+# 43. SECURITY
+
+Implement:
+
+### Supabase Row Level Security
+
+Users must only access:
+
+```text id="1hj5rf"
+their own memories
+```
+
+Never rely exclusively on frontend filtering.
+
+Backend queries must also enforce authenticated user identity.
+
+Never expose:
+
+* Supabase service-role key
+* embedding provider secret
+* backend credentials
+
+to the client.
+
+---
+
+# 44. API DESIGN
+
+Inspect the existing backend API structure before adding endpoints.
+
+Potential endpoints:
+
+```text id="0q8a3f"
+POST /memory/index
+
+POST /memory/search
+
+GET /memory
+
+GET /memory/:id
+
+PATCH /memory/:id
+
+DELETE /memory/:id
+```
+
+Use the existing authentication middleware.
+
+Do not create a second authentication mechanism.
+
+---
+
+# 45. SEARCH RESPONSE
+
+Return structured results.
+
+Example:
+
+```json id="q1ik4f"
 {
-  "prediction": "high_skip_risk",
-  "probability": 0.82,
-  "contributors": [
+  "query": "What was my startup idea?",
+  "results": [
     {
-      "feature": "time_of_day",
-      "direction": "negative",
-      "strength": "strong"
-    }
-  ],
-  "evidence": [
-    {
-      "fact": "Monday evening gym completion rate",
-      "value": 20,
-      "sampleSize": 5
+      "memoryId": "...",
+      "content": "...",
+      "sourceType": "brain_dump",
+      "sourceId": "...",
+      "createdAt": "...",
+      "semanticScore": 0.91,
+      "keywordScore": 0.72,
+      "hybridScore": 0.85
     }
   ]
 }
 ```
 
-Then Kairo converts it into natural language.
+Do not expose unnecessary internal database information.
 
 ---
 
-# 14. KAIRO EXPLANATION RULES
+# 46. OBSERVABILITY
 
-Kairo should follow these rules:
+Track memory system health.
 
-### Rule 1
+Events:
 
-Never invent a contributor.
+```text id="7u3pbr"
+memory_created
+memory_indexing_started
+memory_indexed
+memory_indexing_failed
+memory_retrieval_started
+memory_retrieval_completed
+memory_retrieval_failed
+memory_deleted
+```
 
-### Rule 2
+Track latency:
 
-Never invent statistics.
+```text id="n0b2a5"
+embeddingLatency
+vectorSearchLatency
+fullTextSearchLatency
+rerankingLatency
+contextBuildLatency
+```
 
-### Rule 3
-
-Never invent historical events.
-
-### Rule 4
-
-Never expose raw internal model terminology unnecessarily.
-
-Instead of:
-
-> SHAP value = -0.31
-
-say:
-
-> The timing of this task is one of the strongest factors increasing its predicted skip risk.
-
-### Rule 5
-
-Never claim causality without evidence.
-
-### Rule 6
-
-If evidence is weak, explicitly say so.
-
-Example:
-
-> "I only have two comparable past sessions, so this is an early signal rather than a reliable pattern."
-
-### Rule 7
-
-Keep explanations concise.
+Do not log private memory content unnecessarily.
 
 ---
 
-# 15. EXAMPLE — PROCRASTINATION
+# 47. PERFORMANCE TARGETS
 
-Suppose the model predicts:
+The memory system should feel responsive.
 
-```text
-skipProbability = 0.82
+Optimize:
+
+* embedding generation
+* vector indexing
+* database queries
+* hybrid search
+* context building
+
+Avoid performing unnecessary searches.
+
+For a simple task command:
+
+```text id="f7k1p4"
+"Remind me tomorrow at 8 AM"
 ```
 
-and the evidence shows:
-
-```text
-Monday 9 PM gym:
-
-completed = 1
-skipped = 4
-
-completionRate = 20%
-```
-
-Kairo may say:
-
-> **High skip risk**
->
-> You have completed 1 of your last 5 Monday evening gym sessions. Your completion rate for this time slot is 20%, so the model predicts a high likelihood of postponement.
->
-> Would you like me to suggest a different time?
-
-Do not say:
-
-> "Your fatigue caused you to skip."
-
-unless the evidence actually supports a causal conclusion—which normal observational telemetry generally cannot establish.
+Kairo should not search the entire long-term memory database unless the intent requires it.
 
 ---
 
-# 16. EXAMPLE — SMART SCHEDULING
+# 48. FAILURE HANDLING
 
-Suppose:
+If Supabase is unavailable:
 
-```text
-Current time:
-9 PM
-
-Task:
-Deep study
-
-Energy:
-Low
-
-Historical completion:
-Low at 9 PM
-
-Historical completion:
-High at 9 AM
+```text id="0o9rj7"
+Kairo still works
 ```
 
-Kairo:
+but without long-term memory.
 
-> **I recommend moving this to tomorrow morning.**
->
-> You have a lower completion rate for similar deep-work tasks late in the evening, while your morning completion rate has been higher. Your current energy is also low.
->
-> Want me to move it to 9 AM?
+Kairo should say something like:
 
-The scheduling recommendation must contain:
+> I can help with that, but I couldn't access your long-term memory right now.
 
-```text
-current schedule
-recommended schedule
-reason
-supporting evidence
-prediction difference
+Do NOT crash the application.
+
+If embedding generation fails:
+
+```text id="h3w9v5"
+source data remains safe
+memory indexing retries
 ```
 
-Example:
+If vector search fails but full-text search works:
 
-```json
-{
-  "current": {
-    "time": "21:00",
-    "predictedCompletion": 0.34
-  },
-
-  "recommended": {
-    "time": "09:00",
-    "predictedCompletion": 0.71
-  },
-
-  "improvement": 0.37
-}
+```text id="r2c8yn"
+use full-text fallback
 ```
 
-Do not claim that the recommendation is guaranteed to succeed.
+If full-text search fails but vector search works:
 
----
-
-# 17. SCHEDULING EXPLANATION OBJECT
-
-Create a standard structure:
-
-```text
-ScheduleRecommendation {
-  taskId
-
-  currentSchedule {
-    date
-    time
-    predictedCompletion
-  }
-
-  recommendedSchedule {
-    date
-    time
-    predictedCompletion
-  }
-
-  contributors[]
-
-  evidence[]
-
-  improvementEstimate
-
-  explanationQuality
-
-  modelVersion
-
-  generatedAt
-}
-```
-
-Adapt the exact TypeScript structure to existing project conventions.
-
----
-
-# 18. BACKEND RESPONSE CONTRACT
-
-Prediction APIs should return structured XAI information.
-
-Preferred architecture:
-
-```json
-{
-  "prediction": {},
-  "explanation": {
-    "summary": "",
-    "contributors": [],
-    "evidence": [],
-    "quality": ""
-  },
-  "model": {
-    "name": "",
-    "version": ""
-  }
-}
-```
-
-Do not return only:
-
-```json
-{
-  "prediction": 0.82
-}
-```
-
-The frontend should not need to reverse-engineer the explanation.
-
----
-
-# 19. API DESIGN
-
-Inspect existing Phase 9 APIs first.
-
-Extend them rather than creating duplicate endpoints.
-
-Possible endpoint:
-
-```text
-POST /ml/predict
-```
-
-returning:
-
-```text
-prediction
-+
-explanation
-```
-
-or, if the existing architecture separates prediction and explanation:
-
-```text
-POST /xai/explain
-```
-
-Use whichever architecture best matches the existing codebase.
-
-Do NOT create unnecessary network calls.
-
-If the model prediction and explanation can be generated in one backend operation, prefer that.
-
----
-
-# 20. SECURITY
-
-XAI responses contain personal behavioral information.
-
-Treat them as private user data.
-
-The backend must:
-
-* authenticate the user
-* validate ownership of task IDs
-* validate ownership of telemetry-derived evidence
-* never expose another user's behavioral patterns
-* never accept arbitrary feature values from the client as trusted evidence
-
-The server must derive evidence from trusted backend data.
-
-Do not allow the client to say:
-
-```text
-"User skipped this task 80% of the time"
-```
-
-and have the backend blindly display it.
-
----
-
-# 21. FRONTEND XAI COMPONENT
-
-Create a reusable component.
-
-Possible:
-
-```text
-ExplainabilityCard.tsx
-```
-
-Example UI:
-
-```text
-┌──────────────────────────────────────┐
-│ Kairo's reasoning                    │
-│                                      │
-│ High skip risk · 82%                 │
-│                                      │
-│ Why?                                 │
-│                                      │
-│ ● Monday evening timing              │
-│   Strong signal                      │
-│                                      │
-│ ● Similar tasks were often delayed   │
-│                                      │
-│ Evidence                             │
-│                                      │
-│ 1 / 5 Monday gym sessions completed  │
-│                                      │
-│ [Move to Tuesday morning]            │
-└──────────────────────────────────────┘
-```
-
-Keep the UI simple.
-
-Do not expose raw SHAP plots by default.
-
----
-
-# 22. OPTIONAL DETAIL VIEW
-
-For advanced users, provide:
-
-`Why am I seeing this?`
-
-Opening it can show:
-
-```text
-Prediction
-82%
-
-Top contributing factors
-
-1. Time of day
-2. Historical completion rate
-3. Energy level
-
-Evidence
-
-5 comparable sessions
-```
-
-This gives transparency without overwhelming normal users.
-
----
-
-# 23. EXPLANATION TRACEABILITY
-
-Every generated explanation should be traceable.
-
-Store or return:
-
-```text
-explanationId
-predictionId
-modelName
-modelVersion
-featureSetVersion
-generatedAt
-```
-
-This becomes important when models change.
-
-Example:
-
-```text
-Model v1.2
-```
-
-may produce different explanations than:
-
-```text
-Model v1.3
-```
-
-Do not lose model-version information.
-
----
-
-# 24. MODEL VERSIONING
-
-Every prediction must include:
-
-```text
-modelName
-modelVersion
-featureVersion
-```
-
-Example:
-
-```json
-{
-  "modelName": "procrastination_xgb",
-  "modelVersion": "1.0.0",
-  "featureVersion": "1.0.0"
-}
-```
-
-Do not hardcode these values in the frontend.
-
----
-
-# 25. EXPLANATION CACHING
-
-Do not unnecessarily regenerate identical explanations.
-
-If:
-
-```text
-same prediction
-same model version
-same feature values
-```
-
-are still valid, reuse the explanation where appropriate.
-
-Invalidate when:
-
-* task changes
-* relevant telemetry changes
-* model version changes
-* feature version changes
-* prediction changes
-
----
-
-# 26. KAIRO + XAI ARCHITECTURE
-
-The final architecture should be:
-
-```text
-             USER
-               │
-               ▼
-        Saarathi Task
-               │
-               ▼
-        Feature Builder
-               │
-               ▼
-          ML Model
-               │
-               ▼
-         Prediction
-               │
-        ┌──────┴──────┐
-        │             │
-        ▼             ▼
- Feature            Evidence
-Contributions      Generator
-        │             │
-        └──────┬──────┘
-               ▼
-          XAI Engine
-               │
-               ▼
-      Structured Explanation
-               │
-               ▼
-             Kairo
-               │
-               ▼
-        Natural Language
-               │
-               ▼
-             USER
+```text id="z0k5v4"
+use vector fallback
 ```
 
 ---
 
-# 27. DO NOT LET KAIRO OVERRIDE THE MODEL
+# 49. PRIVACY / USER CONTROL
 
-Kairo can:
+Provide:
 
-* explain
-* summarize
-* compare
-* recommend
-* ask permission
-
-Kairo must not:
-
-* modify prediction values
-* invent feature importance
-* invent behavioral evidence
-* claim certainty
-* fabricate statistics
-
-The model and analytics backend remain authoritative for quantitative claims.
-
----
-
-# 28. HUMAN CONTROL
-
-AI recommendations must remain suggestions.
-
-Example:
-
-> I recommend moving Gym to Tuesday at 8 AM.
-
-Buttons:
-
-```text
-[Move Task]
-
-[Keep Current Time]
-
-[Choose Another Time]
+```text id="6f9s1y"
+Memory Enabled
 ```
 
-Never automatically reschedule an important user task solely because an ML model predicts a better outcome unless the user has explicitly enabled automatic scheduling.
+setting.
 
----
+Users should be able to:
 
-# 29. COLD START
+* disable long-term memory
+* view stored memories
+* delete individual memories
+* clear all memories
+* understand where a memory came from
 
-Integrate Phase 8's cold-start behavior.
+If memory is disabled:
 
-If insufficient telemetry exists:
-
-```text
-prediction unavailable
+```text id="a4d2b9"
+Do not index new memories.
+Do not retrieve existing memories for Kairo.
 ```
 
-or:
-
-```text
-heuristic recommendation
-```
-
-The explanation must explicitly identify the source.
-
-Example:
-
-> I don't have enough history to make a personalized prediction yet. This suggestion is based on your task's deadline and estimated duration rather than learned behavior.
-
-Never present a heuristic as an ML prediction.
+Do not silently re-enable it.
 
 ---
 
-# 30. FALLBACK EXPLANATIONS
+# 50. TESTING
 
-If SHAP or another explanation mechanism fails:
+Create comprehensive tests for:
 
-Do NOT crash.
+### Embeddings
 
-Return:
+* embedding generation
+* correct dimensions
+* content hash
+* duplicate prevention
+* model version
 
-```text
-prediction available
-explanation unavailable
-```
+### Indexing
 
-Then provide a safe explanation based only on verified aggregate evidence.
+* new memory
+* update memory
+* delete memory
+* retry failure
+* async indexing
 
-Example:
+### Vector Search
 
-> The model predicts a high delay risk. I couldn't calculate detailed feature contributions for this prediction, but your recent completion history for similar tasks has been low.
+* semantic relevance
+* user isolation
+* top-K
+* date filtering
 
-Never fabricate feature importance as a fallback.
+### Full Text
 
----
+* exact keyword
+* partial keyword
+* phrase matching
 
-# 31. PERFORMANCE
+### Hybrid Search
 
-XAI should not make Saarathi feel slow.
+* semantic + keyword ranking
+* score normalization
+* duplicate removal
+* ranking
 
-For interactive requests:
+### Context
 
-* calculate prediction and explanation in one backend operation where possible
-* cache compatible explanations
-* avoid unnecessary database queries
-* retrieve only relevant historical evidence
-* avoid sending large datasets to the client
-
-Kairo's natural-language explanation may stream through the existing Kairo WebSocket infrastructure where appropriate.
-
-However:
-
-**The structured prediction/explanation payload must be available independently of the LLM.**
-
-The UI must not depend on Kairo successfully generating prose.
-
----
-
-# 32. ANALYTICS FOR XAI
-
-Track:
-
-```text
-xai_explanation_shown
-xai_details_opened
-recommendation_accepted
-recommendation_rejected
-recommendation_ignored
-```
-
-Do not track private explanation content unnecessarily.
-
-These events will later help evaluate whether explanations actually improve user trust and recommendation acceptance.
-
----
-
-# 33. TESTING
-
-Create tests for:
-
-### Feature contributions
-
-* correct ranking
-* positive contribution
-* negative contribution
-* zero/neutral contribution
-
-### Evidence
-
-* correct historical counts
-* correct sample size
-* correct date ranges
-* correct timezone
-
-### Cold start
-
-* insufficient data
-* heuristic fallback
-* no false ML claims
+* token budget
+* memory diversity
+* relevance filtering
+* provenance
 
 ### Kairo
 
-* does not invent evidence
-* does not invent statistics
-* does not change model values
-* produces concise explanations
+* memory retrieval when necessary
+* no retrieval for simple commands
+* accurate memory references
+* no hallucinated memory
+* ambiguous memory handling
 
 ### Security
 
-* user A cannot access user B's explanation
-* task ownership is validated
+* user A cannot access user B memories
+* RLS works
+* backend authentication works
 
-### Model versioning
+### Deletion
 
-* correct model version
-* feature version
-* explanation invalidation
-
-### Failure handling
-
-* SHAP failure
-* model failure
-* missing feature
-* missing telemetry
-* LLM failure
-
-The application must remain usable even when the natural-language explanation layer fails.
+* deleted source invalidates memory
+* deleted memory no longer appears in retrieval
 
 ---
 
-# 34. EXPLANATION GOLDEN TESTS
+# 51. MEMORY GOLDEN TEST
 
-Create deterministic test fixtures.
+Create deterministic fixtures.
 
 Example:
 
-```text
-Historical data:
+```text id="v4t0qf"
+Memory A:
+User wants to build Saarathi.
 
-Monday 9 PM Gym:
-completed = 1
-skipped = 4
+Memory B:
+User wants to build an AI education startup.
 
-Tuesday 8 AM Gym:
-completed = 4
-skipped = 1
+Memory C:
+User completed DSA yesterday.
 
-Current energy:
-low
-
-Prediction:
-Monday 9 PM
-skip probability = 0.82
-
-Alternative:
-Tuesday 8 AM
-completion probability = 0.76
+Memory D:
+User prefers studying DSA in the morning.
 ```
 
-Expected explanation must contain only facts supported by the fixture.
+Query:
 
-Example acceptable:
+> "What startup idea was I working on?"
 
-> You completed 1 of your last 5 Monday evening gym sessions.
+Expected:
 
-Example unacceptable:
+```text id="n0i3o4"
+Memory B
+```
 
-> You are tired on Monday evenings.
+Query:
 
-unless fatigue/energy data actually exists in the fixture.
+> "When do I prefer studying DSA?"
+
+Expected:
+
+```text id="k5h3rq"
+Memory D
+```
+
+Query:
+
+> "What am I building?"
+
+Expected:
+
+```text id="8x0v8m"
+Memory A
+```
+
+The retrieval system must distinguish these semantically related but different memories.
 
 ---
 
-# 35. UI LANGUAGE
+# 52. ACCEPTANCE CRITERIA
 
-Use calm, non-judgmental language.
+Phase 11 is complete only when:
 
-Avoid:
+### Embeddings
 
-> You are lazy.
+* [ ] Embedding provider abstraction exists.
+* [ ] Sentence Transformer implementation exists.
+* [ ] Embedding dimensions are verified.
+* [ ] Embedding versioning exists.
+* [ ] Content hashing prevents unnecessary regeneration.
+* [ ] Async indexing works.
 
-> You always procrastinate.
+### Database
 
-> You failed again.
+* [ ] Supabase PostgreSQL is configured.
+* [ ] pgvector is enabled.
+* [ ] Memory schema exists.
+* [ ] Full-text search is configured.
+* [ ] Row Level Security is implemented.
+* [ ] User isolation is verified.
 
-Prefer:
+### Memory
 
-> This task has been postponed several times.
+* [ ] Notes can become memories.
+* [ ] Brain dumps can become memories.
+* [ ] Goals can become memories.
+* [ ] Relevant tasks can become memories.
+* [ ] Kairo conversations can become memories.
+* [ ] Explicit user memories can be created.
+* [ ] Memory deletion works.
+* [ ] Memory editing works.
+* [ ] Memory deactivation works.
 
-> Your recent completion rate for similar tasks is lower during this time period.
+### Search
 
-> Would you like to try another time?
-
-Saarathi should help without judging the user.
-
----
-
-# 36. ACCESSIBILITY
-
-Explainability UI must support:
-
-* keyboard navigation
-* screen readers
-* readable contrast
-* accessible labels
-* expandable details
-* mobile-friendly layout
-
-Do not communicate meaning using color alone.
-
-For example:
-
-Do not use only:
-
-```text
-red = negative
-green = positive
-```
-
-Also provide:
-
-```text
-Higher predicted delay risk
-```
-
----
-
-# 37. ACCEPTANCE CRITERIA
-
-Phase 10 is complete only when:
-
-### XAI
-
-* [ ] Model-specific local feature contributions are available where supported.
-* [ ] Global feature importance is distinguished from local explanations.
-* [ ] Feature metadata registry exists.
-* [ ] Feature contribution ranking works.
-* [ ] Prediction + explanation are returned together or through a clean coordinated API.
-* [ ] Model version is included.
-* [ ] Feature version is included.
-
-### Evidence
-
-* [ ] Historical evidence is retrieved from trusted backend data.
-* [ ] Sample sizes are shown or used internally.
-* [ ] Weak evidence is clearly identified.
-* [ ] No unsupported behavioral claims are generated.
-* [ ] Timezone handling is correct.
+* [ ] Semantic vector search works.
+* [ ] Full-text search works.
+* [ ] Hybrid search works.
+* [ ] Score normalization works.
+* [ ] Top-K retrieval works.
+* [ ] Duplicate memories are removed.
+* [ ] Search respects user ownership.
+* [ ] Date/category filters work.
 
 ### Kairo
 
-* [ ] Kairo converts structured evidence into natural language.
-* [ ] Kairo cannot invent feature importance.
-* [ ] Kairo cannot invent historical statistics.
-* [ ] Kairo cannot alter prediction values.
-* [ ] Kairo uses non-judgmental language.
-* [ ] Kairo distinguishes correlation from causation.
-
-### Scheduling
-
-* [ ] Schedule recommendations contain current vs recommended schedule.
-* [ ] Predicted outcome difference is shown when available.
-* [ ] Contributing factors are available.
-* [ ] User must approve schedule changes unless explicit auto-scheduling is enabled.
-
-### Cold Start
-
-* [ ] Insufficient data is handled.
-* [ ] Heuristic recommendations are clearly labeled.
-* [ ] ML predictions are not presented without sufficient model input.
+* [ ] Kairo can retrieve relevant memories.
+* [ ] Kairo receives memory context dynamically.
+* [ ] Simple requests do not trigger unnecessary memory retrieval.
+* [ ] Kairo cites memory provenance where useful.
+* [ ] Kairo does not fabricate memories.
+* [ ] Ambiguous memories trigger clarification where appropriate.
 
 ### Reliability
 
-* [ ] XAI failure does not crash the application.
-* [ ] LLM failure does not destroy structured explanations.
-* [ ] Missing telemetry is handled gracefully.
+* [ ] Supabase failure does not crash Saarathi.
+* [ ] Embedding failure does not lose source data.
+* [ ] Vector search failure falls back to full-text search.
+* [ ] Full-text search failure can fall back to vector search.
+* [ ] Memory indexing retries safely.
 
-### Security
+### Privacy
 
-* [ ] Behavioral explanations are user-scoped.
-* [ ] Task ownership is validated.
-* [ ] Backend does not trust client-supplied evidence.
+* [ ] Memory can be disabled.
+* [ ] User can view memories.
+* [ ] User can delete memories.
+* [ ] User can clear memory.
+* [ ] Deleted source content does not remain retrievable.
 
-### Testing
+### Performance
 
-* [ ] Unit tests pass.
-* [ ] Integration tests pass.
-* [ ] TypeScript checks pass.
-* [ ] Backend tests pass.
-* [ ] Production build passes.
+* [ ] Memory retrieval is reasonably fast.
+* [ ] Context size is bounded.
+* [ ] Unnecessary searches are avoided.
+* [ ] Embeddings are not regenerated unnecessarily.
 
 ---
 
-# 38. DEFINITION OF DONE
+# 53. DEFINITION OF DONE
 
-Before declaring Phase 10 complete, run:
+Before declaring Phase 11 complete, run:
 
-```text
+```text id="y3x5fc"
 npm run lint:types
 npm test
 npm run build
 ```
 
-Also run the FastAPI backend test suite.
+Also run the FastAPI backend tests.
+
+Run Supabase/database tests.
 
 Verify:
 
-```text
+```text id="p2f2q0"
 0 TypeScript errors
 0 failing frontend tests
 0 failing backend tests
 0 production build errors
+0 database security test failures
 ```
 
-Perform an end-to-end test:
+Perform the complete end-to-end flow:
 
-```text
-User creates task
-        ↓
-Phase 8 telemetry
-        ↓
-Phase 9 prediction
-        ↓
-Feature contribution calculation
-        ↓
-Evidence retrieval
-        ↓
-XAI structured response
-        ↓
-Kairo explanation
-        ↓
-User sees "Why?"
-        ↓
-User accepts/rejects recommendation
-        ↓
-Telemetry records the interaction
+```text id="d2u6ml"
+User creates note
+       ↓
+Source stored
+       ↓
+Memory indexing
+       ↓
+Embedding generated
+       ↓
+Supabase memory stored
+       ↓
+User asks Kairo about the note
+       ↓
+Query embedding
+       ↓
+Vector search
+       ↓
+Full-text search
+       ↓
+Hybrid ranking
+       ↓
+Relevant memory
+       ↓
+Context builder
+       ↓
+Kairo
+       ↓
+Accurate answer
+```
+
+Then test deletion:
+
+```text id="5y2j8p"
+Delete source note
+       ↓
+Memory invalidated
+       ↓
+Search again
+       ↓
+Deleted content unavailable
+```
+
+Finally test user isolation:
+
+```text id="5m1m90"
+User A
+   ↓
+Search
+
+MUST NOT
+   ↓
+return User B memories
 ```
 
 ---
 
-# 39. FINAL IMPLEMENTATION REPORT
+# 54. FINAL IMPLEMENTATION REPORT
 
 After implementation, provide:
 
 1. Files created
 2. Files modified
-3. Existing Phase 9 components reused
-4. XAI architecture
-5. Supported models
-6. Explanation method used per model
-7. Feature registry
-8. Prediction response schema
-9. Evidence generation strategy
-10. Kairo reasoning pipeline
-11. Cold-start behavior
-12. Fallback behavior
-13. Security changes
-14. Tests performed
-15. Build/type-check results
-16. Known limitations
-17. Phase 11 readiness
+3. Existing systems reused
+4. Supabase schema
+5. pgvector configuration
+6. Embedding model/provider
+7. Embedding dimensions
+8. Memory indexing pipeline
+9. Hybrid search architecture
+10. Ranking formula
+11. Memory context injection architecture
+12. Memory management UI
+13. Security/RLS changes
+14. API endpoints
+15. Failure/fallback strategy
+16. Tests performed
+17. Performance measurements
+18. Known limitations
+19. Example successful memory retrieval
+20. Phase 12 readiness
 
-Do not claim Phase 10 is complete unless the acceptance criteria have actually been verified.
+Do not claim completion unless the acceptance criteria have actually been verified.
 
 ---
 
-# FINAL ARCHITECTURAL RULE
+# FINAL ARCHITECTURAL PRINCIPLE
 
-Saarathi must always follow:
+Saarathi's long-term memory must follow:
 
-```text
-PREDICT
+```text id="p9k1t3"
+REMEMBER
    ↓
-EXPLAIN
+INDEX
    ↓
-EVIDENCE
+RETRIEVE
    ↓
-COMMUNICATE
+VERIFY
    ↓
-ASK
+CONTEXTUALIZE
    ↓
-ACT
+RESPOND
 ```
 
 Not:
 
-```text
-LLM
- ↓
-Guess
- ↓
-Pretend it is a fact
+```text id="b8q5zy"
+STORE EVERYTHING
+   ↓
+SEND EVERYTHING TO THE LLM
 ```
 
-Kairo is the **communicator and productivity companion**.
+Kairo should remember **useful things**, not everything.
 
-The ML model is the **predictor**.
+Firestore remains the operational source of truth.
 
-The XAI engine is the **translator of model behavior into evidence-backed explanations**.
+Supabase + pgvector becomes the semantic retrieval layer.
 
-The user remains **in control**.
+The embedding system creates searchable representations.
+
+Hybrid search combines semantic understanding with exact keyword matching.
+
+The context builder decides what Kairo actually needs to see.
+
+Kairo communicates the retrieved information but must never invent memories.
+
+The user always has the ability to inspect, modify, disable, and delete persistent memory.
