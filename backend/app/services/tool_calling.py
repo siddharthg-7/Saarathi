@@ -152,6 +152,26 @@ def execute_single_action(uid: str, action: Dict[str, Any]) -> Optional[Dict[str
                 "goal": goal
             }
             
+        elif action_type == "RESCHEDULE_TASK":
+            task_id = params.get("taskId")
+            if not task_id:
+                return None
+            new_date = params.get("newDate")
+            new_time = params.get("newTime")
+            updates = {}
+            if new_time:
+                updates["scheduledTime"] = new_time
+            if new_date:
+                updates["scheduledDate"] = new_date
+            if "postponeCount" in params:
+                updates["postponeCount"] = params["postponeCount"]
+            success = update_task_direct(uid, task_id, updates)
+            return {
+                "actionType": "RESCHEDULE_TASK",
+                "taskId": task_id,
+                "updates": updates
+            }
+                
         elif action_type == "START_TASK":
             # START_TASK just instructs the client to run focus mode on a task
             task_id = params.get("taskId")

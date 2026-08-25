@@ -12,8 +12,12 @@ import {
   CheckCircle2,
   Trash2,
   Filter,
+  HelpCircle,
+  Brain,
 } from 'lucide-react';
 import { Task, TaskStatus, ViewType } from '@saarathi/types';
+import { useXAIStore } from '@saarathi/store';
+import { XAIReasoningModal } from '../components/xai/XAIReasoningModal';
 
 interface TaskBoardViewProps {
   tasks: Task[];
@@ -35,6 +39,14 @@ export const TaskBoardView: React.FC<TaskBoardViewProps> = ({
   const [boardLayout, setBoardLayout] = useState<'kanban' | 'list'>('kanban');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+
+  const fetchTaskExplanation = useXAIStore((s) => s.fetchTaskExplanation);
+  const openExplanationModal = useXAIStore((s) => s.openExplanationModal);
+
+  const handleInspectTask = async (taskId: string) => {
+    const exp = await fetchTaskExplanation(taskId);
+    openExplanationModal(exp);
+  };
 
   const filteredTasks = tasks.filter((t) => {
     const matchesSearch =
@@ -161,17 +173,21 @@ export const TaskBoardView: React.FC<TaskBoardViewProps> = ({
                         </span>
 
                         {/* Skip Probability Badge */}
-                        <span
-                          className={`text-[9px] px-2 py-0.5 rounded font-bold border ${
+                        <button
+                          type="button"
+                          onClick={() => handleInspectTask(task.id)}
+                          className={`text-[9px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 cursor-pointer transition-transform hover:scale-105 ${
                             task.skipProbability > 70
-                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 animate-pulse'
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                               : task.skipProbability > 30
                                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                                 : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                           }`}
+                          title="Click to view AI reasoning"
                         >
-                          {task.skipProbability}% Skip Risk
-                        </span>
+                          <HelpCircle className="w-2.5 h-2.5" />
+                          <span>{task.skipProbability}% Risk</span>
+                        </button>
                       </div>
 
                       <div className="flex items-center justify-between text-[10px] text-gray-500 pt-2 border-t border-white/5">
@@ -232,20 +248,26 @@ export const TaskBoardView: React.FC<TaskBoardViewProps> = ({
                 <span className="text-xs text-gray-400 font-mono">
                   {task.estimatedDuration} mins
                 </span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                <button
+                  type="button"
+                  onClick={() => handleInspectTask(task.id)}
+                  className={`text-[10px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 cursor-pointer ${
                     task.skipProbability > 70
                       ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                       : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                   }`}
                 >
-                  {task.skipProbability}% Risk
-                </span>
+                  <HelpCircle className="w-3 h-3" />
+                  <span>{task.skipProbability}% Risk</span>
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* XAI Reasoning Modal */}
+      <XAIReasoningModal />
     </div>
   );
 };

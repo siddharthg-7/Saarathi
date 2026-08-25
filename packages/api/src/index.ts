@@ -1,6 +1,7 @@
 export * from './client';
 export * from './kairoApi';
 export * from './mlApi';
+export * from './xaiApi';
 export * from './telemetryApi';
 export * from './firebase';
 export * from './authService';

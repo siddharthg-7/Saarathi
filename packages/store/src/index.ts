@@ -5,4 +5,5 @@ export * from './useNotificationStore';
 export * from './useTaskStore';
 export * from './useAnalyticsStore';
 export * from './useMLStore';
+export * from './useXAIStore';
 export * from './data/initialData';

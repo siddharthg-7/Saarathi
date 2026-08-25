@@ -1,5 +1,122 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
+
+# ==========================================
+# XAI (EXPLAINABLE AI) CORE SCHEMAS
+# ==========================================
+
+ContributionDirection = Literal["positive", "negative", "neutral"]
+ContributionStrength = Literal["strong_positive", "positive", "neutral", "negative", "strong_negative"]
+ExplanationQuality = Literal["insufficient_data", "limited_evidence", "moderate_evidence", "strong_evidence"]
+
+class FeatureContributorModel(BaseModel):
+    feature: str
+    displayName: str
+    value: Any
+    rawContribution: float  # e.g. local attribution / SHAP value
+    normalizedContribution: float  # scale -1.0 to 1.0
+    direction: ContributionDirection
+    strength: ContributionStrength
+    importanceRank: int
+    description: Optional[str] = None
+
+class BehavioralEvidenceModel(BaseModel):
+    fact: str
+    metric: str
+    value: Any
+    sampleSize: int
+    timeWindow: Optional[str] = None
+    baselineComparison: Optional[str] = None
+    isStatisticallySignificant: bool = True
+
+class ModelMetadataModel(BaseModel):
+    modelName: str
+    modelVersion: str = "1.0.0"
+    featureVersion: str = "1.0.0"
+    explanationMethod: str = "TreeLocalAttribution"
+    generatedAt: Optional[str] = None
+
+class XAIExplanationModel(BaseModel):
+    explanationId: str
+    taskId: str
+    summary: str
+    predictionType: str = "task_risk"  # "task_risk" | "task_completion" | "schedule_recommendation"
+    probability: float  # 0 to 100 or 0.0 to 1.0
+    quality: ExplanationQuality = "moderate_evidence"
+    qualityReason: Optional[str] = None
+    contributors: List[FeatureContributorModel] = Field(default_factory=list)
+    evidence: List[BehavioralEvidenceModel] = Field(default_factory=list)
+    modelMetadata: ModelMetadataModel
+    isColdStart: bool = False
+    isFallback: bool = False
+    naturalLanguageExplanation: Optional[str] = None
+
+class ScheduleTimeSlotModel(BaseModel):
+    date: str
+    time: str
+    startHour: int
+    endHour: int
+    predictedCompletion: float  # 0 to 100
+
+class ScheduleRecommendationModel(BaseModel):
+    recommendationId: str
+    taskId: str
+    currentSchedule: ScheduleTimeSlotModel
+    recommendedSchedule: ScheduleTimeSlotModel
+    predictedImprovement: float  # difference in percentage points
+    reason: str
+    explanationQuality: ExplanationQuality = "moderate_evidence"
+    contributors: List[FeatureContributorModel] = Field(default_factory=list)
+    evidence: List[BehavioralEvidenceModel] = Field(default_factory=list)
+    modelMetadata: ModelMetadataModel
+    generatedAt: str
+
+class ScheduleRecommendationRequest(BaseModel):
+    taskId: str
+    userId: Optional[str] = None
+    targetDate: Optional[str] = None
+    preferredTime: Optional[str] = None
+
+class ScheduleRecommendationResponse(BaseModel):
+    recommendation: ScheduleRecommendationModel
+    autoApplyEnabled: bool = False
+
+class TaskExplanationRequest(BaseModel):
+    taskId: str
+    userId: Optional[str] = None
+
+class FeatureMetadataModel(BaseModel):
+    feature: str
+    displayName: str
+    category: str
+    description: str
+    unit: Optional[str] = None
+    format: Optional[str] = None
+    positiveMeaning: Optional[str] = None
+    negativeMeaning: Optional[str] = None
+    privacyLevel: str = "private"
+
+class FeatureRegistryResponse(BaseModel):
+    features: List[FeatureMetadataModel]
+    count: int
+    version: str = "1.0.0"
+
+class XAITelemetryEventRequest(BaseModel):
+    eventType: Literal[
+        "xai_explanation_shown",
+        "xai_details_opened",
+        "recommendation_accepted",
+        "recommendation_rejected",
+        "recommendation_ignored"
+    ]
+    explanationId: str
+    taskId: Optional[str] = None
+    recommendationId: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+# ==========================================
+# PHASE 9 & 10 PREDICTION SCHEMAS
+# ==========================================
 
 class RiskPredictionRequest(BaseModel):
     id: str
@@ -23,6 +140,9 @@ class RiskPredictionResponse(BaseModel):
     contributingFactors: List[str] = Field(default_factory=list)
     recommendedAction: Optional[str] = None
     isColdStart: bool = True
+    # XAI Extensions
+    explanation: Optional[XAIExplanationModel] = None
+    modelMetadata: Optional[ModelMetadataModel] = None
 
 class BatchRiskPredictionRequest(BaseModel):
     tasks: List[RiskPredictionRequest]
@@ -33,6 +153,7 @@ class BatchRiskPredictionResponse(BaseModel):
     predictions: List[RiskPredictionResponse]
     highRiskCount: int
     isColdStart: bool = True
+    modelMetadata: Optional[ModelMetadataModel] = None
 
 class OptimalTimeSlotModel(BaseModel):
     dayOfWeek: int

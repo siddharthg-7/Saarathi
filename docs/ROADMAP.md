@@ -337,15 +337,28 @@ Voice ──► Deepgram STT ──► Firestore upload ──► Celery/Async q
 
 ---
 
-## Phase 10 — Explainable AI (XAI)
-**Objective:** Ensure all AI predictions and scheduling adjustments are transparent and justified.  
-**Status:** 📋 Planned
+## Phase 10 — Explainable AI (XAI) Engine & Behavioral Transparency
+**Objective:** Ensure all AI predictions, risk scores, and scheduling adjustments are fully transparent, justified with verified behavioral evidence, and put the human in complete control.  
+**Status:** ✅ Completed (`2026-08-25`)
 
-### Capabilities
-- [ ] Feature importance scoring (e.g., SHAP values / key contributors)
-- [ ] Natural language reasoning engine:
-  > *"Over the past five weeks, you've skipped Monday evening gym sessions four times. Your fatigue score is usually highest after 7 PM, so moving this workout to Tuesday morning increases your predicted completion rate."*
-- [ ] Backend return payload containing prediction + contributing factors
+### Architecture Principle
+```text
+MODEL FACTS → XAI (Local Decision Attribution & Behavioral Evidence) → KAIRO REASONING
+```
+
+### Capabilities & Deliverables
+- [x] **Local Feature Attribution Engine**: Fast decision-tree local attribution (`LocalExplainer`) calculating normalized contribution strength and direction for every task attribute — `2026-08-25`
+- [x] **Behavioral Evidence Engine**: Derives verified historical telemetry evidence (`EvidenceEngine`) from Firestore with strict sample size evaluations (`MIN_EVIDENCE_SAMPLE_SIZE = 5`) — `2026-08-25`
+- [x] **Central Feature Registry**: Managed metadata dictionary (`FEATURE_REGISTRY`) with human-readable labels, units, and privacy classifications — `2026-08-25`
+- [x] **Smart Schedule Optimizer**: Circadian and energy-aligned rescheduling comparator (`ScheduleOptimizer`) with quantified predicted improvement metrics — `2026-08-25`
+- [x] **Transparent Backend Payload**: Extended `RiskPredictionResponse`, `BatchRiskPredictionResponse`, and standalone `/v1/xai/*` endpoints with `XAIExplanationModel` and `ModelMetadataModel` — `2026-08-25`
+- [x] **Strict Kairo Reasoning Rules**: Prompt orchestration enforce zero hallucinations, distinction of local vs global importance, and human-in-the-loop control — `2026-08-25`
+- [x] **Frontend UI & Components**:
+  - `ExplainabilityCard`: Inline transparency card displaying top contributors, strength badges, and verified evidence — `2026-08-25`
+  - `XAIReasoningModal`: Deep inspection modal showing waterfall feature attribution, sample size breakdown, and model metadata — `2026-08-25`
+  - `ScheduleRecommendationCard`: Interactive schedule comparator with `[Move Task]`, `[Keep Current Time]`, and `[Choose Another Time]` controls — `2026-08-25`
+  - Integrated into `TodayView`, `TaskBoardView`, `AIChatView`, and `MLInsightsCard` — `2026-08-25`
+- [x] **Test Coverage**: 31 backend pytest tests (local attribution, evidence extraction, golden fixtures, user isolation, API routes) and 23 frontend Vitest test suites (91 unit tests) — `2026-08-25`
 
 ---
 

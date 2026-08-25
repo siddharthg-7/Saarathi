@@ -33,7 +33,8 @@ export const AIChatView: React.FC<AIChatViewProps> = ({
 
   const presetPrompts = [
     'What should I work on right now?',
-    'Reschedule my postponed workout session',
+    'Why is my workout predicted at high delay risk?',
+    'Reschedule my postponed workout session with evidence',
     'How do I break down my DBMS revision?',
     'Summarize my focus metrics for today',
   ];

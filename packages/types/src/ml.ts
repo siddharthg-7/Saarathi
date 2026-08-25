@@ -1,3 +1,5 @@
+import { XAIExplanation, ModelMetadata } from './xai';
+
 export type MLRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface TaskRiskPrediction {
@@ -10,6 +12,8 @@ export interface TaskRiskPrediction {
   contributingFactors: string[];
   recommendedAction?: string;
   isColdStart: boolean;
+  explanation?: XAIExplanation;
+  modelMetadata?: ModelMetadata;
 }
 
 export interface BatchRiskPredictionRequest {
@@ -33,6 +37,7 @@ export interface BatchRiskPredictionResponse {
   predictions: TaskRiskPrediction[];
   highRiskCount: number;
   isColdStart: boolean;
+  modelMetadata?: ModelMetadata;
 }
 
 export interface OptimalTimeSlot {

@@ -8,6 +8,8 @@ import {
   ProductivityForecastResponse,
   TaskSemanticClusterResponse,
   TaskClusterItem,
+  XAIExplanation,
+  ModelMetadata,
 } from '@saarathi/types';
 
 export interface TaskPredictionResponse {
@@ -19,6 +21,8 @@ export interface TaskPredictionResponse {
   recommendedAction?: string;
   riskLevel?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   isColdStart?: boolean;
+  explanationObject?: XAIExplanation;
+  modelMetadata?: ModelMetadata;
 }
 
 export interface EnergyClustersResponse {
@@ -48,9 +52,9 @@ export const mlApi = {
       });
 
       const mappedRiskLevel = (response.riskLevel?.toUpperCase() || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-      const explanation = response.contributingFactors?.length
+      const explanation = response.explanation?.naturalLanguageExplanation || (response.contributingFactors?.length
         ? response.contributingFactors.join('. ')
-        : 'Task evaluated against standard workload indicators.';
+        : 'Task evaluated against standard workload indicators.');
 
       return {
         taskId: response.taskId,
@@ -61,6 +65,8 @@ export const mlApi = {
         recommendedAction: response.recommendedAction,
         riskLevel: mappedRiskLevel,
         isColdStart: response.isColdStart,
+        explanationObject: response.explanation,
+        modelMetadata: response.modelMetadata,
       };
     } catch {
       let riskScore = 0.25;

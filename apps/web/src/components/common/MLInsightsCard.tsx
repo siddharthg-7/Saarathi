@@ -11,8 +11,12 @@ import {
   Layers,
   ChevronRight,
   RefreshCw,
+  HelpCircle,
+  BarChart2,
 } from 'lucide-react';
-import { useMLStore, useTaskStore } from '@saarathi/store';
+import { useMLStore, useTaskStore, useXAIStore } from '@saarathi/store';
+import { XAIReasoningModal } from '../xai/XAIReasoningModal';
+import { ExplainabilityCard } from '../xai/ExplainabilityCard';
 
 interface MLInsightsCardProps {
   userId?: string;
@@ -29,12 +33,14 @@ export const MLInsightsCard: React.FC<MLInsightsCardProps> = ({
     burnoutReport,
     forecast,
     taskClusters,
+    taskRiskMap,
     loading,
     isColdStart,
     refreshAllMLInsights,
   } = useMLStore();
 
   const tasks = useTaskStore((s) => s.tasks);
+  const openExplanationModal = useXAIStore((s) => s.openExplanationModal);
 
   useEffect(() => {
     refreshAllMLInsights({
@@ -42,6 +48,8 @@ export const MLInsightsCard: React.FC<MLInsightsCardProps> = ({
       tasks,
     });
   }, [userId, tasks.length]);
+
+  const tasksWithExplanations = Object.values(taskRiskMap).filter((p) => p.explanation);
 
   return (
     <div className={`space-y-6 ${className}`} data-testid="ml-insights-card">
@@ -295,6 +303,50 @@ export const MLInsightsCard: React.FC<MLInsightsCardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Explainable AI (XAI) Reasoning Section */}
+      <div className="p-6 rounded-3xl bg-gray-900/80 border border-indigo-500/20 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-indigo-400" />
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                Phase 10 — Explainable AI (XAI) Reasoning
+              </h3>
+              <p className="text-xs text-gray-400">
+                Transparent local feature contributions, behavioral evidence, and confidence indicators.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono px-2.5 py-1 bg-indigo-950 text-indigo-300 rounded-full border border-indigo-500/30">
+            Model Facts → XAI → Kairo
+          </span>
+        </div>
+
+        {tasksWithExplanations.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {tasksWithExplanations.slice(0, 2).map((pred) => (
+              <ExplainabilityCard
+                key={pred.taskId}
+                explanation={pred.explanation!}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-white/5 text-xs text-gray-400 flex items-center justify-between">
+            <span>Tasks evaluated against local feature attribution engine and baseline historical telemetry.</span>
+            <button
+              onClick={() => refreshAllMLInsights({ userId, tasks })}
+              className="text-xs text-indigo-300 hover:text-indigo-200 font-semibold"
+            >
+              Analyze Tasks
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Deep Inspection Modal */}
+      <XAIReasoningModal />
     </div>
   );
 };

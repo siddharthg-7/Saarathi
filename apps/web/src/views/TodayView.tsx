@@ -9,8 +9,12 @@ import {
   Play,
   MapPin,
   Check,
+  HelpCircle,
+  Brain,
 } from 'lucide-react';
 import { Task, EnergyLevel, ViewType } from '@saarathi/types';
+import { useXAIStore } from '@saarathi/store';
+import { XAIReasoningModal } from '../components/xai/XAIReasoningModal';
 
 interface TodayViewProps {
   tasks: Task[];
@@ -32,6 +36,14 @@ export const TodayView: React.FC<TodayViewProps> = ({
   const [newTitle, setNewTitle] = useState('');
   const [newEnergy, setNewEnergy] = useState<EnergyLevel>('Medium');
   const [newCategory, setNewCategory] = useState('Coding');
+
+  const fetchTaskExplanation = useXAIStore((s) => s.fetchTaskExplanation);
+  const openExplanationModal = useXAIStore((s) => s.openExplanationModal);
+
+  const handleInspectTask = async (taskId: string) => {
+    const exp = await fetchTaskExplanation(taskId);
+    openExplanationModal(exp);
+  };
 
   const filteredTasks = tasks.filter((t) => {
     if (selectedEnergy !== 'ALL' && t.energyRequired !== selectedEnergy) return false;
@@ -267,14 +279,23 @@ export const TodayView: React.FC<TodayViewProps> = ({
                         </div>
                       )}
 
-                      <div className="flex items-center gap-4 text-[10px] text-muted pt-2">
+                      <div className="flex items-center gap-3 text-[10px] text-muted pt-2 flex-wrap">
                         <span>⏱️ {task.estimatedDuration} mins</span>
                         <span>⏰ Scheduled: {task.scheduledTime || '09:30 AM'}</span>
-                        {task.skipProbability > 50 && (
-                          <span className="text-warning font-bold">
-                            ⚠️ {task.skipProbability}% Procrastination Risk
+                        {task.skipProbability > 30 && (
+                          <span className="text-warning font-bold flex items-center gap-1">
+                            ⚠️ {task.skipProbability}% Risk
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleInspectTask(task.id)}
+                          className="text-primary hover:text-primaryHover font-semibold flex items-center gap-1 cursor-pointer"
+                          aria-label={`Inspect reasoning for ${task.title}`}
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                          <span>Why?</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -307,6 +328,9 @@ export const TodayView: React.FC<TodayViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* XAI Reasoning Modal */}
+      <XAIReasoningModal />
     </div>
   );
 };

@@ -19,7 +19,9 @@ from app.models import (
     TaskClusterItemModel,
     TaskClusterModel,
     TaskSemanticClusterResponse,
+    ModelMetadataModel,
 )
+from app.services.xai.xai_service import XAIService
 
 COLD_START_THRESHOLD = 50
 
@@ -156,6 +158,23 @@ class MLService:
         if not contributing_factors:
             contributing_factors.append("Standard workload and clear priority assignment")
 
+        # Generate structured Explainable AI payload
+        explanation = XAIService.generate_task_explanation(
+            task=task,
+            uid=user_id or "default_user",
+            skip_probability=skip_prob,
+            is_cold_start=is_cold,
+            events_count=events_count,
+        )
+
+        model_metadata = ModelMetadataModel(
+            modelName="task_risk_rf",
+            modelVersion="1.0.0",
+            featureVersion="1.0.0",
+            explanationMethod="TreeLocalAttribution" if not is_cold else "HeuristicRuleWeights",
+            generatedAt=datetime.now(timezone.utc).isoformat(),
+        )
+
         return RiskPredictionResponse(
             taskId=task.id,
             skipProbability=skip_prob,
@@ -166,6 +185,8 @@ class MLService:
             contributingFactors=contributing_factors,
             recommendedAction=recommended_action,
             isColdStart=is_cold,
+            explanation=explanation,
+            modelMetadata=model_metadata,
         )
 
     @classmethod
@@ -185,10 +206,19 @@ class MLService:
             if pred.highRisk:
                 high_risk_count += 1
 
+        batch_meta = ModelMetadataModel(
+            modelName="task_risk_rf_batch",
+            modelVersion="1.0.0",
+            featureVersion="1.0.0",
+            explanationMethod="TreeLocalAttribution" if not is_cold else "HeuristicRuleWeights",
+            generatedAt=datetime.now(timezone.utc).isoformat(),
+        )
+
         return BatchRiskPredictionResponse(
             predictions=predictions,
             highRiskCount=high_risk_count,
             isColdStart=is_cold,
+            modelMetadata=batch_meta,
         )
 
     # ==========================================

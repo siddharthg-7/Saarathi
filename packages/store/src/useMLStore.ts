@@ -61,6 +61,8 @@ export const useMLStore = create<MLState>((set, get) => ({
       contributingFactors: res.explanation ? [res.explanation] : [],
       recommendedAction: res.recommendedAction,
       isColdStart: res.isColdStart ?? true,
+      explanation: res.explanationObject,
+      modelMetadata: res.modelMetadata,
     };
 
     set((state) => ({
