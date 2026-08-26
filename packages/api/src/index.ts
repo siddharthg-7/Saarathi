@@ -13,5 +13,6 @@ export * from './notifications';
 export * from './telemetry';
 export * from './analytics';
 export * from './memoryApi';
+export * from './resilience';
 export * from './config/env';
 

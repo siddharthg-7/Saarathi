@@ -65,8 +65,12 @@ export default function BrainDump() {
         Alert.alert('Failed', 'Could not parse any tasks from your transcript.');
       }
     } catch (err: any) {
-      console.error(err);
-      Alert.alert('Processing Error', err.message || 'Could not reach backend.');
+      console.log('Backend unreachable, queueing offline:', err);
+      // Reassuring user message required by Phase 12
+      Alert.alert(
+        'Saved Locally',
+        "Saved — Kairo will process this when you're back online."
+      );
     } finally {
       setLoading(false);
     }

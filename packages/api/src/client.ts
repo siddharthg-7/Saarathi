@@ -1,8 +1,11 @@
 import { env } from './config/env';
+import { retryWithBackoff, RetryOptions } from './resilience/retryClient';
+import { defaultApiClientCircuit } from './resilience/circuitBreaker';
 
 export interface RequestOptions extends RequestInit {
   authToken?: string;
   params?: Record<string, string>;
+  retryOptions?: RetryOptions;
 }
 
 export class ApiClient {
@@ -26,7 +29,7 @@ export class ApiClient {
   }
 
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { authToken, params, headers, ...customConfig } = options;
+    const { authToken, params, headers, retryOptions, ...customConfig } = options;
 
     let url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
@@ -41,19 +44,46 @@ export class ApiClient {
       ...customConfig,
     };
 
+    if (!defaultApiClientCircuit.canExecute()) {
+      console.warn(`[ApiClient] Circuit is OPEN for backend API. Fallback mode.`);
+      if (!env.enableMockFallback) {
+        throw new Error(`API Circuit breaker is OPEN for ${endpoint}.`);
+      }
+    }
+
+    const isTestEnv =
+      typeof process !== 'undefined' &&
+      (process.env?.NODE_ENV === 'test' || process.env?.VITEST === 'true');
+
+    const effectiveRetryOptions: RetryOptions = {
+      maxRetries: isTestEnv ? 1 : 3,
+      initialDelayMs: isTestEnv ? 20 : 500,
+      maxDelayMs: isTestEnv ? 100 : 8000,
+      timeoutMs: isTestEnv ? 2000 : 30000,
+      ...retryOptions,
+    };
+
     try {
-      const response = await fetch(url, config);
+      return await retryWithBackoff<T>(async (signal) => {
+        const response = await fetch(url, { ...config, signal });
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`API Request failed [${response.status}]: ${errorBody}`);
-      }
+        if (!response.ok) {
+          const errorBody = await response.text();
+          const err = new Error(`API Request failed [${response.status}]: ${errorBody}`);
+          (err as any).status = response.status;
+          (err as any).headers = response.headers;
+          defaultApiClientCircuit.recordFailure();
+          throw err;
+        }
 
-      if (response.status === 204) {
-        return {} as T;
-      }
+        defaultApiClientCircuit.recordSuccess();
 
-      return (await response.json()) as T;
+        if (response.status === 204) {
+          return {} as T;
+        }
+
+        return (await response.json()) as T;
+      }, effectiveRetryOptions);
     } catch (error) {
       if (!env.enableMockFallback) {
         throw error;

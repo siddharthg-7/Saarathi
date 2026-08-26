@@ -63,6 +63,27 @@ export type KairoTelemetryEventType =
   | 'kairo_recommendation_accepted'
   | 'kairo_recommendation_rejected';
 
+export type ResilienceTelemetryEventType =
+  | 'provider_request'
+  | 'provider_success'
+  | 'provider_failure'
+  | 'provider_timeout'
+  | 'provider_rate_limit'
+  | 'retry_started'
+  | 'retry_exhausted'
+  | 'circuit_opened'
+  | 'circuit_half_open'
+  | 'circuit_closed'
+  | 'fallback_used'
+  | 'cache_hit'
+  | 'cache_miss'
+  | 'audio_queued'
+  | 'audio_retry'
+  | 'audio_completed'
+  | 'audio_failed'
+  | 'websocket_reconnect'
+  | 'offline_operation_queued';
+
 export type NavigationTelemetryEventType =
   | 'analytics_view_opened'
   | 'focus_view_opened'
@@ -76,11 +97,49 @@ export type TelemetryEventType =
   | MoodTelemetryEventType
   | HabitTelemetryEventType
   | KairoTelemetryEventType
+  | ResilienceTelemetryEventType
   | NavigationTelemetryEventType;
 
 export type EnergyLevelValue = 'low' | 'medium' | 'high';
 export type MoodLevelValue = 'very_low' | 'low' | 'neutral' | 'good' | 'very_good';
 export type LogSource = 'manual' | 'kairo' | 'daily_checkin';
+
+export type SystemDegradationLevel = 0 | 1 | 2 | 3 | 4;
+
+export interface ProviderHealth {
+  provider: string;
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+  failureCount: number;
+  successCount: number;
+  totalRequests: number;
+  totalFailures: number;
+  totalSuccesses: number;
+  circuitOpenCount: number;
+  totalCircuitOpenDuration: number;
+  openTimeRemainingSeconds: number;
+  avgLatencyMs: number;
+  p95LatencyMs: number;
+  lastFailure?: number | null;
+  lastSuccess?: number | null;
+  lastErrorCategory?: string | null;
+  lastErrorMessage?: string | null;
+}
+
+export interface OfflineAudioJob {
+  id: string;
+  userId: string;
+  localFilePath: string;
+  createdAt: string;
+  status: 'queued' | 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed' | 'retry_wait' | 'cancelled';
+  retryCount: number;
+  lastAttemptAt?: string | null;
+  nextAttemptAt?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  checksum?: string | null;
+  remoteId?: string | null;
+}
 
 export interface TaskEventMetadata {
   taskId: string;

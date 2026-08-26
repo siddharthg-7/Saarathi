@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryManagementView } from './MemoryManagementView';
 import { useMemoryStore } from '@saarathi/store';
 import { memoryApi } from '@saarathi/api';
@@ -27,6 +27,7 @@ describe('MemoryManagementView', () => {
       userId: 'test_user',
       sourceType: 'user_preference',
       content: 'I prefer doing DSA in the morning',
+      summary: 'Morning DSA preference',
       importance: 0.8,
       confidence: 1.0,
       embeddingModel: 'all-MiniLM-L6-v2',
@@ -70,7 +71,9 @@ describe('MemoryManagementView', () => {
   });
 
   it('renders memory management header, stats, and stored memories', async () => {
-    render(<MemoryManagementView />);
+    await act(async () => {
+      render(<MemoryManagementView />);
+    });
     expect(screen.getByText(/Long-Term Memory & Hybrid Semantic Retrieval/i)).toBeDefined();
     expect(await screen.findByText(/Startup idea: AI vocational training platform/i)).toBeDefined();
     expect(await screen.findByText(/I prefer doing DSA in the morning/i)).toBeDefined();
@@ -78,27 +81,39 @@ describe('MemoryManagementView', () => {
   });
 
   it('filters memories by source type when tab clicked', async () => {
-    render(<MemoryManagementView />);
+    await act(async () => {
+      render(<MemoryManagementView />);
+    });
     const brainDumpTab = screen.getByRole('button', { name: /Brain Dumps/i });
-    fireEvent.click(brainDumpTab);
+    await act(async () => {
+      fireEvent.click(brainDumpTab);
+    });
 
     expect(await screen.findByText(/Startup idea: AI vocational training platform/i)).toBeDefined();
   });
 
   it('opens add memory modal on button click', async () => {
-    render(<MemoryManagementView />);
+    await act(async () => {
+      render(<MemoryManagementView />);
+    });
     const addBtn = screen.getByRole('button', { name: /Add Memory/i });
-    fireEvent.click(addBtn);
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
 
     expect(screen.getByText(/Add Long-Term Memory/i)).toBeDefined();
     expect(screen.getByPlaceholderText(/e\.g\. I prefer doing difficult/i)).toBeDefined();
   });
 
   it('toggles memory engine state', async () => {
-    render(<MemoryManagementView />);
+    await act(async () => {
+      render(<MemoryManagementView />);
+    });
     const toggleBtn = screen.getByText(/Memory Engine/i).parentElement?.querySelector('button');
     if (toggleBtn) {
-      fireEvent.click(toggleBtn);
+      await act(async () => {
+        fireEvent.click(toggleBtn);
+      });
       expect(useMemoryStore.getState().memorySystemEnabled).toBe(false);
     }
   });

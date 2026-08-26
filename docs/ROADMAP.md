@@ -21,9 +21,9 @@
 | **Phase 7** | Notifications & Smart Reminders | ✅ Completed | `2026-08-22` |
 | **Phase 8** | Analytics & Behavioral Telemetry | ✅ Completed | `2026-08-23` |
 | **Phase 9** | Machine Learning Foundation | ✅ Completed | `2026-08-24` |
-| **Phase 10** | Explainable AI (XAI) | ⏳ In Progress | — |
-| **Phase 11** | Long-Term Memory (Vector & Hybrid Search) | 📋 Planned | — |
-| **Phase 12** | Resilience & Reliability (Circuit Breakers) | ⏳ In Progress | — |
+| **Phase 10** | Explainable AI (XAI) | ✅ Completed | `2026-08-24` |
+| **Phase 11** | Long-Term Memory (Vector & Hybrid Search) | ✅ Completed | `2026-08-25` |
+| **Phase 12** | Resilience & Reliability (Circuit Breakers) | ✅ Completed | `2026-08-27` |
 | **Phase 13** | Performance Optimization | ⏳ In Progress | — |
 | **Phase 14** | Security & Compliance | ⏳ In Progress | — |
 | **Phase 15** | Testing & Quality Assurance | ⏳ In Progress | — |
@@ -422,15 +422,70 @@ Tasks / Notes / Brain Dumps / Goals / Kairo Chats
 ---
 
 ## Phase 12 — Resilience & Reliability
-**Objective:** Unbreakable operation through cascading fallbacks and circuit breakers.  
-**Status:** ⏳ In Progress
+**Objective:** Unbreakable operation through cascading fallbacks, exponential backoff, circuit breakers, offline queuing, and graceful degradation.  
+**Status:** ✅ Completed (`2026-08-27`)
 
-### Circuit Breakers & Fallback Mechanisms
-- [x] Groq LLM fallback to Gemini on rate limit or outage (`ai_service.py`) — `2026-08-06`
-- [ ] Exponential backoff and jittered retries
-- [ ] Intelligent caching of frequent prompt responses
-- [ ] Deepgram STT fallback to Whisper / alternative provider
-- [ ] Offline audio queuing for background processing on reconnect
+### Architecture Flow
+```text
+Client (Web / Mobile)
+        │
+        ▼
+Saarathi Backend Gateway
+        │
+        ▼
+Shared Resilience Layer
+  ├── Exponential Backoff with Jitter (delay = min(maxDelay, baseDelay * 2^attempt) + jitter)
+  ├── Normalized Error Classifier (Transient vs Permanent Failures)
+  ├── Thread-Safe Circuit Breaker Registry (CLOSED -> OPEN -> HALF_OPEN)
+  ├── Deterministic Response Cache with TTL (SHA-256 context-aware keys)
+  ├── Idempotency Manager (Duplicate operation prevention)
+  └── Multi-Stage Checkpointer (Resume without re-recording or re-transcribing)
+        │
+  ┌─────┴──────────────────┬──────────────────┐
+  ▼                        ▼                  ▼
+LLM Fallback Chain        STT Fallback Chain  Storage Resilience
+Groq (Primary)            Deepgram (Primary)  Firestore (OCC / Offline Cache)
+  │ (Fail / Circuit Open)   │                  Supabase (Eventual Consistency)
+  ▼                         ▼
+Gemini (Fallback)         Whisper / Groq STT
+  │                         │
+  ▼                         ▼
+Degradation Level 2       Local Checkpoint
+(Deterministic Local)     (Resume Transcript)
+```
+
+### Deliverables & Implementation
+- [x] **Shared Resilience Layer**:
+  - `resilience_config.py`: Configurable retry counts, delays, jitter ratio, circuit thresholds, and per-operation timeouts.
+  - `error_classifier.py`: Normalized `ErrorCategory` enum, transient error filter, and non-sensitive user-friendly messages.
+  - `backoff.py`: Exponential backoff calculation with jitter, `Retry-After` header support, and `retry_async` helper.
+  - `circuit_breaker.py`: Thread-safe `CircuitBreaker` (`CLOSED`, `OPEN`, `HALF_OPEN`), cooldown timers, half-open trials, and `CircuitBreakerRegistry`.
+  - `idempotency.py`: Deterministic key generation and deduplication manager (`PROCESSING`, `COMPLETED`, `FAILED`).
+  - `response_cache.py`: Context-aware LLM response cache with TTLs, failure fallback, and invalidation. — `2026-08-27`
+- [x] **STT Provider Abstraction & Fallback**:
+  - `STTProvider` abstract base class.
+  - `DeepgramSTTProvider` (Primary) wrapped with circuit breaker and retry.
+  - `WhisperSTTProvider` (Fallback) with Groq Whisper and local fallback.
+  - Audio input validation (file presence, size ≤ 25MB, supported codecs). — `2026-08-27`
+- [x] **Multi-Stage Brain Dump Pipeline & Checkpointing**:
+  - Multi-stage pipeline (`audio_saved` -> `transcribed` -> `tasks_extracted` -> `synced`).
+  - Checkpoint resume endpoint: `POST /v1/brain-dump/resume/{checkpointId}` allowing resumption from saved transcript without re-recording or re-transcribing. — `2026-08-27`
+- [x] **Client-Side Resilience Layer**:
+  - `retryClient.ts`: Exponential backoff with jitter and timeout wrapper on `fetch`.
+  - `circuitBreaker.ts`: Client-side circuit breaker.
+  - `networkMonitor.ts`: Cross-platform network state listener (`online`, `offline`, `unstable`).
+  - `offlineAudioQueue.ts`: Durable offline recording queue with controlled concurrency (2–3 jobs) and deduplication checksums.
+  - `resilientWebSocket.ts`: Reconnecting WebSocket client with heartbeat ping/pong and REST fallback.
+  - `useResilienceStore.ts`: Zustand store for degradation levels (0–4) and offline queue status. — `2026-08-27`
+- [x] **Telemetry & Health Endpoints**:
+  - `GET /v1/resilience/health`: Real-time provider circuit states, latency, and degradation level.
+  - `GET /v1/resilience/metrics`: Aggregated reliability metrics (success rate, fallback rate, latency P95, cache hit rate).
+  - `POST /v1/resilience/circuit/reset`: Admin/test circuit breaker reset.
+  - Phase 8 & 12 resilience telemetry event ingestion. — `2026-08-27`
+- [x] **Verification & Test Coverage**:
+  - 84 backend pytest tests passing (10 dedicated resilience suites: backoff, circuit breaker, error classifier, AI fallback, STT, cache, idempotency, checkpointing, telemetry, chaos).
+  - 24 frontend Vitest test suites (95 tests) passing.
+  - `npm run lint:types` (0 errors) and `npm run build` production bundle passing in 10.9s. — `2026-08-27`
 
 ---
 

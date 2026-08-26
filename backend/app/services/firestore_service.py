@@ -427,4 +427,66 @@ def save_mood_energy_doc(uid: str, energy: Optional[str], mood: Optional[str], s
     _in_memory_mood_energy.setdefault(uid, []).append(doc_data)
     return doc_data
 
+# In-memory storage for resilient checkpoints
+_in_memory_checkpoints: Dict[str, Dict[str, Any]] = {}
+
+def save_checkpoint_doc(
+    checkpoint_id: str,
+    uid: str,
+    stage: str,
+    raw_transcript: Optional[str] = None,
+    extracted_tasks: Optional[List[Dict[str, Any]]] = None,
+    audio_checksum: Optional[str] = None,
+    error_code: Optional[str] = None,
+    error_message: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Persists intermediate multi-stage pipeline state (audio_saved, transcribed, tasks_extracted, synced).
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    data = {
+        "checkpointId": checkpoint_id,
+        "userId": uid,
+        "stage": stage,
+        "rawTranscript": raw_transcript,
+        "extractedTasks": extracted_tasks or [],
+        "audioChecksum": audio_checksum,
+        "errorCode": error_code,
+        "errorMessage": error_message,
+        "updatedAt": now_iso,
+    }
+    
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('checkpoints').document(checkpoint_id).set(data, merge=True)
+        except Exception as e:
+            logger.warning(f"Error saving checkpoint doc to Firestore: {e}")
+            
+    existing = _in_memory_checkpoints.get(checkpoint_id, {"createdAt": now_iso})
+    merged = {**existing, **data}
+    _in_memory_checkpoints[checkpoint_id] = merged
+    return merged
+
+def get_checkpoint_doc(uid: str, checkpoint_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieves a checkpoint by ID for resume capability with strict user isolation.
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            doc = db.collection('users').document(uid).collection('checkpoints').document(checkpoint_id).get()
+            if doc.exists:
+                d = doc.to_dict()
+                if d and d.get("userId") == uid:
+                    return d
+        except Exception as e:
+            logger.warning(f"Error fetching checkpoint from Firestore: {e}")
+            
+    cp = _in_memory_checkpoints.get(checkpoint_id)
+    if cp and cp.get("userId") == uid:
+        return cp
+    return None
+
+
 

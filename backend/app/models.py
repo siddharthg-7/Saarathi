@@ -545,3 +545,97 @@ class MemoryStatsResponse(BaseModel):
     countsBySource: Dict[str, int]
     embeddingModel: str
     dimensions: int
+
+# -------------------------------------------------------------
+# Phase 12 — Saarathi Resilience & Reliability Engine Models
+# -------------------------------------------------------------
+
+CircuitStateLiteral = Literal["CLOSED", "OPEN", "HALF_OPEN"]
+ProviderStatusLiteral = Literal["healthy", "degraded", "unhealthy"]
+DegradationLevelLiteral = Literal[0, 1, 2, 3, 4]
+AudioJobStatusLiteral = Literal[
+    "queued",
+    "uploading",
+    "uploaded",
+    "processing",
+    "completed",
+    "failed",
+    "retry_wait",
+    "cancelled"
+]
+
+class ProviderHealthModel(BaseModel):
+    provider: str
+    status: ProviderStatusLiteral = "healthy"
+    circuitState: CircuitStateLiteral = "CLOSED"
+    failureCount: int = 0
+    successCount: int = 0
+    totalRequests: int = 0
+    totalFailures: int = 0
+    totalSuccesses: int = 0
+    circuitOpenCount: int = 0
+    totalCircuitOpenDuration: float = 0.0
+    openTimeRemainingSeconds: float = 0.0
+    avgLatencyMs: float = 0.0
+    p95LatencyMs: float = 0.0
+    lastFailure: Optional[float] = None
+    lastSuccess: Optional[float] = None
+    lastErrorCategory: Optional[str] = None
+    lastErrorMessage: Optional[str] = None
+
+class SystemHealthOverviewModel(BaseModel):
+    status: str = "ok"
+    degradationLevel: DegradationLevelLiteral = 0
+    degradationReason: Optional[str] = None
+    providers: Dict[str, ProviderHealthModel]
+    timestamp: str
+
+class BrainDumpCheckpointModel(BaseModel):
+    checkpointId: str
+    userId: str
+    stage: Literal["audio_saved", "transcribed", "tasks_extracted", "synced", "failed"]
+    rawTranscript: Optional[str] = None
+    extractedTasks: List[Dict[str, Any]] = Field(default_factory=list)
+    audioChecksum: Optional[str] = None
+    errorCode: Optional[str] = None
+    errorMessage: Optional[str] = None
+    createdAt: str
+    updatedAt: str
+
+class ResumeCheckpointRequest(BaseModel):
+    checkpointId: str
+
+class OfflineAudioJobModel(BaseModel):
+    id: str
+    userId: str
+    localFilePath: str
+    createdAt: str
+    status: AudioJobStatusLiteral = "queued"
+    retryCount: int = 0
+    lastAttemptAt: Optional[str] = None
+    nextAttemptAt: Optional[str] = None
+    errorCode: Optional[str] = None
+    errorMessage: Optional[str] = None
+    checksum: Optional[str] = None
+    remoteId: Optional[str] = None
+
+class ReliabilityMetricsModel(BaseModel):
+    providerSuccessRate: float
+    providerFailureRate: float
+    fallbackRate: float
+    avgLatencyMs: float
+    p95LatencyMs: float
+    retryRate: float
+    cacheHitRate: float
+    circuitOpenDurationSeconds: float
+    audioProcessingSuccessRate: float
+    offlineQueueCompletionRate: float
+    totalOperationsTracked: int
+
+class ResilienceCircuitResetRequest(BaseModel):
+    provider: Optional[str] = None  # None resets all
+
+class ResilienceCircuitResetResponse(BaseModel):
+    status: str
+    resetProviders: List[str]
+

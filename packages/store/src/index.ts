@@ -7,4 +7,5 @@ export * from './useAnalyticsStore';
 export * from './useMLStore';
 export * from './useXAIStore';
 export * from './useMemoryStore';
+export * from './useResilienceStore';
 export * from './data/initialData';

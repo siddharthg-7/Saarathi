@@ -36,16 +36,38 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   showSensitiveDetails: true,
 };
 
+// Helper to recursively strip undefined values because Firestore rejects undefined
+function cleanFirestoreData<T extends Record<string, any>>(data: T): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      if (
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        !(value instanceof Date) &&
+        typeof (value as any).toMillis !== 'function'
+      ) {
+        cleaned[key] = cleanFirestoreData(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 // ================= REMINDERS =================
 
 export async function createReminderDoc(userId: string, reminder: Reminder): Promise<void> {
   const reminderRef = doc(db, 'users', userId, 'reminders', reminder.id);
-  await setDoc(reminderRef, {
+  const data = cleanFirestoreData({
     ...reminder,
     userId,
     createdAt: reminder.createdAt || new Date().toISOString(),
     updatedAt: serverTimestamp(),
   });
+  await setDoc(reminderRef, data);
 }
 
 export async function updateReminderDoc(
@@ -54,10 +76,11 @@ export async function updateReminderDoc(
   updates: Partial<Reminder>
 ): Promise<void> {
   const reminderRef = doc(db, 'users', userId, 'reminders', reminderId);
-  await updateDoc(reminderRef, {
+  const data = cleanFirestoreData({
     ...updates,
     updatedAt: serverTimestamp(),
   });
+  await updateDoc(reminderRef, data);
 }
 
 export async function deleteReminderDoc(userId: string, reminderId: string): Promise<void> {
@@ -109,11 +132,12 @@ export async function createNotificationDoc(
   item: NotificationItem
 ): Promise<void> {
   const notifRef = doc(db, 'users', userId, 'notifications', item.id);
-  await setDoc(notifRef, {
+  const data = cleanFirestoreData({
     ...item,
     userId,
     createdAt: serverTimestamp(),
   });
+  await setDoc(notifRef, data);
 }
 
 export async function updateNotificationDoc(
@@ -122,10 +146,11 @@ export async function updateNotificationDoc(
   updates: Partial<NotificationItem>
 ): Promise<void> {
   const notifRef = doc(db, 'users', userId, 'notifications', notificationId);
-  await updateDoc(notifRef, {
+  const data = cleanFirestoreData({
     ...updates,
     updatedAt: serverTimestamp(),
   });
+  await updateDoc(notifRef, data);
 }
 
 export async function deleteNotificationDoc(

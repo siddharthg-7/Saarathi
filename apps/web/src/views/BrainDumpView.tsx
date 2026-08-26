@@ -10,9 +10,12 @@ import {
   RotateCcw,
   Volume2,
   ArrowRight,
+  WifiOff,
+  CloudUpload,
 } from 'lucide-react';
 import { Task, EnergyLevel } from '@saarathi/types';
 import { auth, env } from '@saarathi/api';
+import { useResilienceStore } from '@saarathi/store';
 
 interface BrainDumpViewProps {
   onAddTask: (title: string, category: string, energy: EnergyLevel) => void;
@@ -23,6 +26,7 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
   const [extractedTasks, setExtractedTasks] = useState<
     {
       title: string;
@@ -32,6 +36,8 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
       aiSummary: string;
     }[]
   >([]);
+
+  const { networkStatus, offlineJobs, enqueueOfflineAudio, processOfflineQueue, isSyncingQueue } = useResilienceStore();
 
   useEffect(() => {
     let interval: any;
@@ -54,6 +60,7 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
       // Start recording
       setExtractedTasks([]);
       setTranscript('');
+      setOfflineNotice(null);
       setIsRecording(true);
     }
   };
@@ -67,6 +74,15 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
       'I need to revise DBMS relational indexing for my exam, complete the full-stack API integration for Saarathi OS before 8 PM, go for a 45-minute gym session, and call my mother.';
 
     setTranscript(mockTranscript);
+
+    // If clearly offline, queue locally with the exact reassurance message
+    if (networkStatus === 'offline') {
+      const uid = auth.currentUser?.uid || 'guest-user';
+      enqueueOfflineAudio(uid, mockTranscript);
+      setOfflineNotice("Saved locally. Kairo will process your voice note when your connection returns.");
+      setIsProcessing(false);
+      return;
+    }
 
     let token = '';
     try {
@@ -175,9 +191,41 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
         <h1 className="text-2xl font-extrabold text-white">Speak Your Mind Freely</h1>
         <p className="text-xs text-gray-400 max-w-md mx-auto mt-1">
           Record up to 2 minutes of unformatted thoughts. Kairo automatically extracts, prioritizes,
-          and schedules your tasks.
+          and schedules your tasks with offline resilience.
         </p>
+
+        {/* Offline & Queue Status */}
+        {networkStatus === 'offline' && (
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium">
+            <WifiOff className="w-3.5 h-3.5" />
+            <span>Offline Mode Active — Recordings will be safely queued locally</span>
+          </div>
+        )}
+
+        {offlineJobs.length > 0 && (
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <span className="text-xs text-gray-400">
+              📁 {offlineJobs.filter(j => j.status === 'queued' || j.status === 'uploading').length} pending offline recording(s)
+            </span>
+            <button
+              onClick={() => processOfflineQueue()}
+              disabled={isSyncingQueue || networkStatus === 'offline'}
+              className="px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/30 text-indigo-300 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
+            >
+              <CloudUpload className="w-3.5 h-3.5" />
+              <span>{isSyncingQueue ? 'Syncing...' : 'Sync Now'}</span>
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Offline Notice Banner */}
+      {offlineNotice && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-3 text-amber-200 text-xs">
+          <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{offlineNotice}</span>
+        </div>
+      )}
 
       {/* Recording Waveform & Control Card */}
       <div className="p-8 rounded-3xl bg-gray-900 border border-white/10 text-center shadow-2xl relative overflow-hidden">

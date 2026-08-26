@@ -1,9 +1,10 @@
 import re
 import json
+import uuid
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException
 from pydantic import BaseModel
 from app.core.security import verify_firebase_token
 from app.services.firestore_service import (
@@ -13,7 +14,7 @@ from app.services.firestore_service import (
     save_chat_message
 )
 from app.services.prompt_orchestration import orchestrate_chat_prompt, orchestrate_daily_brief_prompt
-from app.services.ai_service import call_groq_chat, call_gemini
+from app.services.ai_service import call_groq_chat, call_gemini, call_resilient_chat_llm, call_groq_chat_stream
 from app.services.tool_calling import parse_and_execute_tools
 from app.services.memory import (
     MemoryIntentDetector,
@@ -22,6 +23,9 @@ from app.services.memory import (
     MemoryService,
 )
 from app.models import MemoryCreateRequest, HybridSearchResultItem
+from app.core.resilience.circuit_breaker import circuit_registry
+from app.core.resilience.error_classifier import classify_error, get_user_friendly_message
+from app.core.resilience.response_cache import llm_cache
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +39,7 @@ class ClientContext(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     clientContext: Optional[ClientContext] = None
+    requestId: Optional[str] = None
 
 class SuggestedAction(BaseModel):
     actionType: str
@@ -50,6 +55,8 @@ class ChatResponse(BaseModel):
     suggestedActions: List[SuggestedAction] = []
     timestamp: str = ""
     retrievedMemories: Optional[List[HybridSearchResultItem]] = None
+    providerUsed: Optional[str] = None
+    requestId: Optional[str] = None
     
     # Backward compatibility fields
     reply: str = ""
@@ -79,32 +86,45 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
             data_str = await websocket.receive_text()
             data = json.loads(data_str)
             
+            # Heartbeat ping/pong support
+            if data.get("type") == "ping":
+                await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
+                continue
+
             message = data.get("message", "")
+            if not message.strip():
+                continue
+
             client_context = data.get("clientContext", {}) or {}
-            
             location = client_context.get("currentLocation", "Unknown")
             energy = client_context.get("currentEnergy", "Medium")
             focus_mode = client_context.get("activeFocusMode", False)
 
-            # Check explicit memory creation
-            is_explicit, explicit_fact = MemoryIntentDetector.detect_explicit_memory(message)
-            if is_explicit and explicit_fact:
-                MemoryService.index_memory(
-                    uid=uid,
-                    req=MemoryCreateRequest(
-                        sourceType="user_preference",
-                        content=explicit_fact,
-                        importance=0.9
+            # Check explicit memory creation with resilience
+            try:
+                is_explicit, explicit_fact = MemoryIntentDetector.detect_explicit_memory(message)
+                if is_explicit and explicit_fact:
+                    MemoryService.index_memory(
+                        uid=uid,
+                        req=MemoryCreateRequest(
+                            sourceType="user_preference",
+                            content=explicit_fact,
+                            importance=0.9
+                        )
                     )
-                )
+            except Exception as mem_err:
+                logger.warning(f"Memory indexing error in WebSocket (graceful degradation): {mem_err}")
 
             # Retrieve relevant long-term memories if intent requires memory
             memories_context = ""
             retrieved_memories = []
-            if MemoryIntentDetector.requires_memory_retrieval(message):
-                search_res = hybrid_search_engine.search(uid=uid, query=message, match_count=5)
-                retrieved_memories = search_res.results
-                memories_context = MemoryContextBuilder.build_context(retrieved_memories)
+            try:
+                if MemoryIntentDetector.requires_memory_retrieval(message):
+                    search_res = hybrid_search_engine.search(uid=uid, query=message, match_count=5)
+                    retrieved_memories = search_res.results
+                    memories_context = MemoryContextBuilder.build_context(retrieved_memories)
+            except Exception as ret_err:
+                logger.warning(f"Memory search error in WebSocket (degradation Level 3): {ret_err}")
             
             tasks = get_user_tasks(uid)
             goals = get_user_goals(uid)
@@ -126,7 +146,6 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
             
             full_response = ""
             try:
-                from app.services.ai_service import call_groq_chat_stream
                 async for chunk in call_groq_chat_stream(messages):
                     full_response += chunk
                     await websocket.send_json({
@@ -134,19 +153,15 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
                         "delta": chunk
                     })
             except Exception as e:
-                logger.warning(f"Groq streaming failed, falling back to Gemini: {e}")
-                gemini_contents = []
-                for msg in messages:
-                    if msg["role"] != "system":
-                        gemini_contents.append({
-                            "role": "model" if msg["role"] == "assistant" else "user",
-                            "parts": [{"text": msg["content"]}]
-                        })
-                response_text = await call_gemini(gemini_contents, system_instruction=system_prompt)
-                full_response = response_text
+                logger.warning(f"Groq streaming failed, attempting resilient fallback: {e}")
+                full_response, _ = await call_resilient_chat_llm(
+                    messages=messages,
+                    system_instruction=system_prompt,
+                    model="llama-3.3-70b-specdec"
+                )
                 await websocket.send_json({
                     "type": "content",
-                    "delta": response_text
+                    "delta": full_response
                 })
             
             cleaned_reply, executed_actions = parse_and_execute_tools(uid, full_response)
@@ -179,16 +194,23 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
             })
             
     except WebSocketDisconnect:
-        logger.info("WebSocket disconnected")
+        logger.info("Kairo Chat WebSocket disconnected")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         try:
+            category = classify_error(e)
+            await websocket.send_json({
+                "type": "error",
+                "message": get_user_friendly_message(category)
+            })
             await websocket.close()
         except Exception:
             pass
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_firebase_token)):
+    req_id = payload.requestId or f"req_{uuid.uuid4().hex[:12]}"
+
     # 1. Fetch user context & database info
     tasks = get_user_tasks(uid)
     goals = get_user_goals(uid)
@@ -197,30 +219,35 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
     energy = payload.clientContext.currentEnergy if payload.clientContext else "Medium"
     focus_mode = payload.clientContext.activeFocusMode if payload.clientContext else False
     
-    # 2. Get recent chat history
     history = get_chat_history(uid, limit=10)
     
-    # Check explicit memory creation
-    is_explicit, explicit_fact = MemoryIntentDetector.detect_explicit_memory(payload.message)
-    if is_explicit and explicit_fact:
-        MemoryService.index_memory(
-            uid=uid,
-            req=MemoryCreateRequest(
-                sourceType="user_preference",
-                content=explicit_fact,
-                importance=0.9
+    # Check explicit memory creation safely
+    try:
+        is_explicit, explicit_fact = MemoryIntentDetector.detect_explicit_memory(payload.message)
+        if is_explicit and explicit_fact:
+            MemoryService.index_memory(
+                uid=uid,
+                req=MemoryCreateRequest(
+                    sourceType="user_preference",
+                    content=explicit_fact,
+                    importance=0.9
+                )
             )
-        )
+    except Exception as e:
+        logger.warning(f"Memory indexing error (graceful degradation): {e}")
 
-    # Retrieve relevant long-term memories if intent requires memory
+    # Retrieve relevant long-term memories safely (Degradation Level 3 if Supabase unavailable)
     memories_context = ""
     retrieved_memories = []
-    if MemoryIntentDetector.requires_memory_retrieval(payload.message):
-        search_res = hybrid_search_engine.search(uid=uid, query=payload.message, match_count=5)
-        retrieved_memories = search_res.results
-        memories_context = MemoryContextBuilder.build_context(retrieved_memories)
+    try:
+        if MemoryIntentDetector.requires_memory_retrieval(payload.message):
+            search_res = hybrid_search_engine.search(uid=uid, query=payload.message, match_count=5)
+            retrieved_memories = search_res.results
+            memories_context = MemoryContextBuilder.build_context(retrieved_memories)
+    except Exception as e:
+        logger.warning(f"Memory retrieval unavailable ({e}), continuing chat without memory context.")
 
-    # 3. Build Kairo system prompt containing state
+    # 3. Build Kairo system prompt
     system_prompt = orchestrate_chat_prompt(
         location=location,
         energy=energy,
@@ -236,21 +263,12 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": payload.message})
     
-    # 5. Call LLM (using Groq Llama 3.3 for fast responses)
-    # If Groq fails, we fallback to Gemini
-    try:
-        response_text = await call_groq_chat(messages, model="llama-3.3-70b-specdec")
-    except Exception as e:
-        logger.warning(f"Groq failed, falling back to Gemini: {e}")
-        # Convert messages format for Gemini API
-        gemini_contents = []
-        for msg in messages:
-            if msg["role"] != "system":
-                gemini_contents.append({
-                    "role": "model" if msg["role"] == "assistant" else "user",
-                    "parts": [{"text": msg["content"]}]
-                })
-        response_text = await call_gemini(gemini_contents, system_instruction=system_prompt)
+    # 5. Call Resilient LLM with fallback chain
+    response_text, provider_used = await call_resilient_chat_llm(
+        messages=messages,
+        system_instruction=system_prompt,
+        model="llama-3.3-70b-specdec"
+    )
         
     # 6. Parse and execute tool calls
     cleaned_reply, executed_actions = parse_and_execute_tools(uid, response_text)
@@ -275,7 +293,6 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
         "focusMode": focus_mode
     })
     
-    # 9. Formulate response
     timestamp = datetime.now(timezone.utc).isoformat()
     return ChatResponse(
         role="assistant",
@@ -283,6 +300,8 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
         suggestedActions=actions,
         timestamp=timestamp,
         retrievedMemories=retrieved_memories if retrieved_memories else None,
+        providerUsed=provider_used,
+        requestId=req_id,
         reply=cleaned_reply,
         suggestedAction=actions[0].actionType if actions else ""
     )
@@ -293,19 +312,10 @@ async def get_daily_briefing(uid: str = Depends(verify_firebase_token)):
     goals = get_user_goals(uid)
     
     system_prompt = orchestrate_daily_brief_prompt(tasks, goals)
+    contents = [{"role": "user", "parts": [{"text": "Generate my morning daily briefing."}]}]
     
-    contents = [
-        {
-            "role": "user",
-            "parts": [{"text": "Generate my morning daily briefing."}]
-        }
-    ]
-    
-    # Call Gemini (with rate limiter)
     try:
         response_text = await call_gemini(contents, system_instruction=system_prompt, model="gemini-1.5-flash")
-        
-        # Clean response and parse json
         cleaned_json = response_text
         json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
         if json_match:
@@ -319,8 +329,7 @@ async def get_daily_briefing(uid: str = Depends(verify_firebase_token)):
             scheduleSummary=brief_data.get("scheduleSummary", [])
         )
     except Exception as e:
-        logger.error(f"Error generating daily briefing: {e}")
-        # Return fallback mock briefing if LLM fails
+        logger.warning(f"Error generating dynamic daily briefing ({e}), returning safe offline brief.")
         return DailyBriefResponse(
             greeting="Good morning! Here is your daily productivity outline.",
             optimalFocusWindow={"start": "09:30:00", "end": "11:30:00"},
@@ -368,30 +377,38 @@ Return a JSON object with this exact schema:
 }}
 Only output valid JSON."""
 
+    # Generate cache key for safe deterministic goal decomposition
+    cache_key = llm_cache.generate_cache_key(
+        provider="groq",
+        model="llama-3.3-70b-versatile",
+        prompt=f"{payload.goalTitle}:{payload.category}:{payload.targetDate}",
+        feature_version="goal_decompose_v1"
+    )
+
     messages = [
         {"role": "system", "content": "You are a strategic goal decomposition AI. Output JSON only."},
         {"role": "user", "content": prompt}
     ]
 
     try:
-        response_text = await call_groq_chat(messages, model="llama-3.3-70b-versatile")
-    except Exception:
-        contents = [{"role": "user", "parts": [{"text": prompt}]}]
-        response_text = await call_gemini(contents, system_instruction="Output JSON only.")
-
-    cleaned_json = response_text
-    json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
-    if json_match:
-        cleaned_json = json_match.group(1).strip()
-    
-    try:
+        response_text, _ = await call_resilient_chat_llm(
+            messages=messages,
+            system_instruction="Output JSON only.",
+            model="llama-3.3-70b-versatile",
+            cacheable=True,
+            cache_key=cache_key
+        )
+        cleaned_json = response_text
+        json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
+        if json_match:
+            cleaned_json = json_match.group(1).strip()
         data = json.loads(cleaned_json)
         return GoalDecomposeResponse(
             milestones=data.get("milestones", []),
             dailyTasks=data.get("dailyTasks", [])
         )
     except Exception as e:
-        logger.error(f"Error parsing goal decompose response: {e}")
+        logger.warning(f"Goal decompose fallback applied: {e}")
         return GoalDecomposeResponse(
             milestones=[
                 GoalMilestoneModel(title="Foundational Knowledge & Setup", targetWeeks="Weeks 1-2", progress=0),
@@ -403,5 +420,3 @@ Only output valid JSON."""
                 DailyTaskModel(title="Set up implementation workspace", duration=30, energy="Medium"),
             ]
         )
-
-
