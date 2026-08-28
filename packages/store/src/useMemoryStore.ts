@@ -36,6 +36,7 @@ interface MemoryState {
   setSearchQuery: (query: string) => void;
   setFilter: (filter: MemorySearchFilter) => void;
   resetSearch: () => void;
+  reset: () => void;
 }
 
 export const useMemoryStore = create<MemoryState>()(
@@ -51,6 +52,19 @@ export const useMemoryStore = create<MemoryState>()(
       memorySystemEnabled: true,
       selectedMemory: null,
       error: null,
+
+      reset: () =>
+        set({
+          memories: [],
+          stats: null,
+          searchQuery: '',
+          searchResults: [],
+          activeFilter: {},
+          isLoading: false,
+          isSearching: false,
+          selectedMemory: null,
+          error: null,
+        }),
 
       fetchMemories: async (sourceType, isActive = true) => {
         set({ isLoading: true, error: null });

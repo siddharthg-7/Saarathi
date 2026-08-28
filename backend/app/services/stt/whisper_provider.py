@@ -2,7 +2,7 @@ import os
 import time
 import logging
 import httpx
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from app.core.config import settings
 from app.core.resilience.circuit_breaker import circuit_registry
 from app.core.resilience.resilience_config import resilience_config
@@ -36,7 +36,14 @@ class WhisperSTTProvider(STTProvider):
             "maxDurationSeconds": 1200,
         }
 
-    async def transcribe(self, audio_data: bytes, content_type: str = "audio/wav") -> str:
+    async def transcribe(
+        self,
+        audio_data: bytes,
+        content_type: str = "audio/wav",
+        mode: str = "smart",
+        language: Optional[str] = None,
+        custom_vocabulary: Optional[List[str]] = None
+    ) -> str:
         cb = circuit_registry.get("whisper")
         start_time = time.time()
 
@@ -46,7 +53,11 @@ class WhisperSTTProvider(STTProvider):
                 url = "https://api.groq.com/openai/v1/audio/transcriptions"
                 headers = {"Authorization": f"Bearer {settings.GROQ_API_KEY}"}
                 files = {"file": ("audio.wav", audio_data, content_type)}
-                data = {"model": "whisper-large-v3"}
+                data: Dict[str, Any] = {"model": "whisper-large-v3"}
+                if language and language != "auto":
+                    data["language"] = language
+                if custom_vocabulary:
+                    data["prompt"] = ", ".join(custom_vocabulary[:30])
 
                 timeout_sec = resilience_config.TIMEOUT_STT_SECONDS
                 async with httpx.AsyncClient(timeout=timeout_sec) as client:

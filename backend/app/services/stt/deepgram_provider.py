@@ -1,7 +1,7 @@
 import time
 import logging
 import httpx
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 from fastapi import HTTPException
 from app.core.config import settings
 from app.core.resilience.circuit_breaker import circuit_registry, CircuitBreakerOpenException
@@ -28,11 +28,19 @@ class DeepgramSTTProvider(STTProvider):
             "provider": "deepgram",
             "model": "nova-2",
             "smartFormat": True,
+            "customVocabulary": True,
             "supportedFormats": ["audio/wav", "audio/mpeg", "audio/mp3", "audio/m4a", "audio/ogg", "audio/webm"],
             "maxDurationSeconds": 600,
         }
 
-    async def transcribe(self, audio_data: bytes, content_type: str = "audio/wav") -> str:
+    async def transcribe(
+        self,
+        audio_data: bytes,
+        content_type: str = "audio/wav",
+        mode: str = "smart",
+        language: Optional[str] = None,
+        custom_vocabulary: Optional[List[str]] = None
+    ) -> str:
         cb = circuit_registry.get("deepgram")
         if not cb.can_execute():
             health = cb.get_health()
@@ -43,7 +51,15 @@ class DeepgramSTTProvider(STTProvider):
             cb.record_failure(err)
             raise err
 
-        url = "https://api.deepgram.com/v1/listen?smart_format=true"
+        params = ["smart_format=true" if mode == "smart" else "smart_format=false"]
+        if language and language != "auto":
+            params.append(f"language={language}")
+        if custom_vocabulary:
+            for word in custom_vocabulary[:20]:
+                params.append(f"keywords={word}:2")
+
+        query_str = "&".join(params)
+        url = f"https://api.deepgram.com/v1/listen?{query_str}"
         headers = {
             "Authorization": f"Token {settings.DEEPGRAM_API_KEY}",
             "Content-Type": content_type

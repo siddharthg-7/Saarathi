@@ -284,7 +284,7 @@ export const BrainDumpView: React.FC<BrainDumpViewProps> = ({ onAddTask }) => {
         <div className="p-6 rounded-2xl bg-gray-900/80 border border-indigo-500/30 text-center space-y-3">
           <Sparkles className="w-6 h-6 text-indigo-400 animate-spin mx-auto" />
           <div className="font-bold text-xs text-white">
-            Kairo is organizing your thoughts...
+            Kairo is processing your brain dump...
           </div>
           <p className="text-[11px] text-gray-400">
             Extracting tasks, energy levels, categories, and scheduling them in real-time.

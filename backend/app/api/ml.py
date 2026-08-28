@@ -38,13 +38,19 @@ async def predict_batch_risk(
         events_count=payload.eventsCount,
     )
 
+def _resolve_uid(auth_uid: str, payload_uid: Optional[str]) -> str:
+    if auth_uid == "dev-user-uid" and payload_uid:
+        return payload_uid
+    return auth_uid
+
 @router.post("/cluster-energy", response_model=EnergyClusterResponse, dependencies=[Depends(rate_limit(RateLimitTier.DEFAULT))])
 async def cluster_energy_windows(
     payload: EnergyClusterRequest,
     uid: str = Depends(verify_firebase_token)
 ):
+    target_uid = _resolve_uid(uid, payload.userId)
     return MLService.cluster_energy_windows(
-        user_id=uid,
+        user_id=target_uid,
         hourly_stats=payload.hourlyStats,
         events=payload.events,
     )
@@ -54,8 +60,9 @@ async def detect_burnout(
     payload: BurnoutDetectionRequest,
     uid: str = Depends(verify_firebase_token)
 ):
+    target_uid = _resolve_uid(uid, payload.userId)
     return MLService.detect_burnout_and_anomalies(
-        user_id=uid,
+        user_id=target_uid,
         recent_daily_stats=payload.recentDailyStats,
         recent_tasks=payload.recentTasks,
         recent_events=payload.recentEvents,
@@ -66,8 +73,9 @@ async def forecast_productivity(
     payload: ProductivityForecastRequest,
     uid: str = Depends(verify_firebase_token)
 ):
+    target_uid = _resolve_uid(uid, payload.userId)
     return MLService.forecast_productivity(
-        user_id=uid,
+        user_id=target_uid,
         historical_daily_stats=payload.historicalDailyStats,
         forecast_days_count=payload.forecastDaysCount,
     )

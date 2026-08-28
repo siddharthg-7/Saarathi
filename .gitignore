@@ -1,31 +1,54 @@
+# Dependencies
 node_modules/
-build/
+
+# Build and distribution outputs
 dist/
+build/
 coverage/
-.DS_Store
-*.log
-.env*
+.coverage
+htmlcov/
+*.tsbuildinfo
+web-build/
+
+# Environment and secrets
+.env
+.env.*
 !.env.example
 
-# Python cache & bytecode
+# Python cache & virtual environments
 __pycache__/
 *.py[cod]
 *$py.class
 *.pyo
 *.pyd
 .pytest_cache/
-.coverage
-htmlcov/
 *.egg-info/
 .venv/
 env/
 venv/
 
+# Keys, certificates, credentials & service accounts
+*.key
+*.pem
+*.p12
+*.p8
+*.jks
+*.keystore
+*service-account*.json
+*credentials*.json
+
+# Mobile & Firebase configuration files
+google-services.json
+GoogleService-Info.plist
+
 # Expo & Mobile
 .expo/
 .expo-shared/
+.kotlin/
 
-# IDE & Editor files
+# Operating System & Editor files
+.DS_Store
+*.log
 .vscode/
 .idea/
 *.swp

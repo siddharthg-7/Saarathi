@@ -83,6 +83,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({
       isAuthenticated: false,
       isLoading: false,
+      authModalMode: null,
       userProfile: fallbackUserProfile,
       userSettings: fallbackUserSettings,
     }),

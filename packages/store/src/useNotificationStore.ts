@@ -68,6 +68,8 @@ interface NotificationState {
     actionId: string,
     onTaskComplete?: (taskId: string) => void
   ) => Promise<void>;
+
+  reset: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -82,6 +84,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   recommendations: [],
   activeUid: null,
   isLoading: false,
+
+  reset: () =>
+    set({
+      notifications: [],
+      reminders: [],
+      unreadCount: 0,
+      recommendations: [],
+      activeUid: null,
+      isLoading: false,
+    }),
 
   initNotificationListener: (uid: string) => {
     set({ activeUid: uid, isLoading: true });

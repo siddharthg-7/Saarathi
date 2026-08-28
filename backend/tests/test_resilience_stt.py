@@ -4,6 +4,10 @@ from app.services.stt.stt_service import validate_audio_input, ResilientSTTManag
 from app.core.resilience.circuit_breaker import circuit_registry, CircuitState
 from fastapi import HTTPException
 
+@pytest.fixture(autouse=True)
+def reset_circuits():
+    circuit_registry.reset_all()
+
 def test_validate_audio_input_valid():
     fake_wav = b"RIFF....WAVEfmt ...."
     ct = validate_audio_input(fake_wav, "audio/wav", "recording.wav")
@@ -26,25 +30,42 @@ def test_validate_audio_input_unsupported_format_raises_400():
     assert exc_info.value.status_code == 400
 
 @pytest.mark.asyncio
-async def test_stt_manager_deepgram_primary_success():
+async def test_stt_manager_gemini_primary_success():
     mgr = ResilientSTTManager()
     audio_bytes = b"dummy audio payload"
 
-    with patch.object(mgr.primary_provider, "transcribe", new_callable=AsyncMock) as mock_deepgram:
-        mock_deepgram.return_value = "This is a transcribed voice note."
+    with patch.object(mgr.gemini_provider, "transcribe", new_callable=AsyncMock) as mock_gemini:
+        mock_gemini.return_value = "This is a transcribed voice note."
 
         transcript, provider = await mgr.transcribe(audio_bytes, content_type="audio/wav")
         assert transcript == "This is a transcribed voice note."
+        assert provider == "gemini_transcribe"
+        assert mock_gemini.call_count == 1
+
+@pytest.mark.asyncio
+async def test_stt_manager_fallback_to_deepgram_on_gemini_failure():
+    mgr = ResilientSTTManager()
+    audio_bytes = b"dummy audio payload"
+
+    with patch.object(mgr.gemini_provider, "transcribe", new_callable=AsyncMock) as mock_gemini, \
+         patch.object(mgr.deepgram_provider, "transcribe", new_callable=AsyncMock) as mock_deepgram:
+        mock_gemini.side_effect = HTTPException(status_code=503, detail="Gemini STT unavailable")
+        mock_deepgram.return_value = "Deepgram fallback transcript."
+
+        transcript, provider = await mgr.transcribe(audio_bytes, content_type="audio/wav")
+        assert transcript == "Deepgram fallback transcript."
         assert provider == "deepgram"
         assert mock_deepgram.call_count == 1
 
 @pytest.mark.asyncio
-async def test_stt_manager_fallback_to_whisper_on_deepgram_failure():
+async def test_stt_manager_fallback_to_whisper_on_all_failures():
     mgr = ResilientSTTManager()
     audio_bytes = b"dummy audio payload"
 
-    with patch.object(mgr.primary_provider, "transcribe", new_callable=AsyncMock) as mock_deepgram, \
-         patch.object(mgr.fallback_provider, "transcribe", new_callable=AsyncMock) as mock_whisper:
+    with patch.object(mgr.gemini_provider, "transcribe", new_callable=AsyncMock) as mock_gemini, \
+         patch.object(mgr.deepgram_provider, "transcribe", new_callable=AsyncMock) as mock_deepgram, \
+         patch.object(mgr.whisper_provider, "transcribe", new_callable=AsyncMock) as mock_whisper:
+        mock_gemini.side_effect = HTTPException(status_code=503, detail="Gemini unavailable")
         mock_deepgram.side_effect = HTTPException(status_code=503, detail="Deepgram unavailable")
         mock_whisper.return_value = "Whisper fallback transcript."
 

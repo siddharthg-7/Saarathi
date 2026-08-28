@@ -108,10 +108,10 @@ async def brain_dump_ws(websocket: WebSocket, token: Optional[str] = None):
                 })
                 continue
             
-            # Immediately send status message
+            # Immediately send status message (Non-blocking feedback)
             await websocket.send_json({
                 "status": "processing",
-                "message": "Kairo is organizing your thoughts..."
+                "message": "Kairo is processing your brain dump..."
             })
             
             prompt = orchestrate_brain_dump_prompt(transcript)
@@ -189,6 +189,7 @@ class BrainDumpRequest(BaseModel):
     transcript: str
     checkpointId: Optional[str] = None
     idempotencyKey: Optional[str] = None
+    mode: Optional[str] = "smart"
 
 class ExtractedTask(BaseModel):
     id: str
@@ -205,6 +206,7 @@ class BrainDumpResponse(BaseModel):
     extractedTasks: List[ExtractedTask]
     providerUsed: Optional[str] = None
     checkpointId: Optional[str] = None
+    mode: Optional[str] = "smart"
 
 async def extract_and_persist_tasks(
     uid: str,
@@ -316,7 +318,8 @@ async def process_brain_dump(payload: BrainDumpRequest, uid: str = Depends(verif
             rawTranscript=payload.transcript,
             extractedTasks=tasks,
             providerUsed=provider,
-            checkpointId=payload.checkpointId
+            checkpointId=payload.checkpointId,
+            mode=payload.mode or "smart"
         )
         idempotency_manager.complete(idem_key, resp)
         return resp
@@ -333,14 +336,16 @@ async def process_audio_brain_dump(
     audio: UploadFile = File(...),
     timezone: Optional[str] = Form(None),
     checkpointId: Optional[str] = Form(None),
+    mode: str = Form("smart"), # "smart" | "verbatim"
+    language: Optional[str] = Form(None),
     uid: str = Depends(verify_firebase_token)
 ):
     """
     Multi-stage Voice Brain Dump:
     Stage 1: Validation & Audio Reading
-    Stage 2: Resilient STT Transcription (Deepgram with Whisper fallback) -> Checkpoint saved
+    Stage 2: Prioritized Resilient STT Transcription (Gemini 3.5 Transcribe -> Deepgram -> Whisper)
     Stage 3: Resilient LLM Task Extraction -> Tasks saved
-    Stage 4: Firestore Sync
+    Stage 4: Firestore Sync & Audio Cleanup
     """
     # Sanitize filename against directory traversal
     safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', audio.filename or "recording.m4a")
@@ -361,13 +366,18 @@ async def process_audio_brain_dump(
         audio_checksum=audio_checksum
     )
 
-    logger.info(f"Transcribing audio file {audio.filename} for user {uid} (Checkpoint: {cp_id})")
+    logger.info(f"Transcribing audio file {audio.filename} with mode '{mode}' for user {uid} (Checkpoint: {cp_id})")
     transcript, stt_provider = await stt_manager.transcribe(
         audio_data=audio_data,
         content_type=content_type,
         filename=audio.filename,
-        uid=uid
+        uid=uid,
+        mode=mode,
+        language=language
     )
+    
+    # Audio data memory cleanup
+    del audio_data
     
     if not transcript or not transcript.strip():
         save_checkpoint_doc(
@@ -386,7 +396,8 @@ async def process_audio_brain_dump(
         rawTranscript=transcript,
         extractedTasks=tasks,
         providerUsed=f"{stt_provider}+{llm_provider}",
-        checkpointId=cp_id
+        checkpointId=cp_id,
+        mode=mode
     )
 
 @router.post("/resume/{checkpoint_id}", response_model=BrainDumpResponse)

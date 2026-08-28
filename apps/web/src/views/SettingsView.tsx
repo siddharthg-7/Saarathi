@@ -11,6 +11,7 @@ import {
   Zap,
   Brain,
   Sliders,
+  LogOut,
 } from 'lucide-react';
 import { UserProfile } from '@saarathi/types';
 import { MemoryManagementView } from '../components/memory/MemoryManagementView';
@@ -18,9 +19,10 @@ import { MemoryManagementView } from '../components/memory/MemoryManagementView'
 interface SettingsViewProps {
   userProfile: UserProfile;
   onUpdateProfile: (updated: Partial<UserProfile>) => void;
+  onLogout?: () => void;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ userProfile, onUpdateProfile }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ userProfile, onUpdateProfile, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'memory' | 'health'>('general');
   const [aiModel, setAiModel] = useState(userProfile.aiModel);
   const [workingStart, setWorkingStart] = useState(userProfile.workingHoursStart);
@@ -251,10 +253,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ userProfile, onUpdat
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between pt-2">
+            {onLogout ? (
+              <button
+                onClick={onLogout}
+                className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-semibold text-xs rounded-xl border border-rose-500/30 flex items-center gap-1.5 transition-all shadow cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
+            ) : <div />}
+
             <button
               onClick={handleSave}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all"
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-500/20 transition-all cursor-pointer"
             >
               Save Preferences
             </button>

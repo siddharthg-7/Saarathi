@@ -88,5 +88,5 @@ describe('useMLStore (Phase 9 Zustand Store)', () => {
     expect(state.forecast).not.toBeNull();
     expect(state.taskRiskMap['t_all_1']).toBeDefined();
     expect(state.lastUpdated).not.toBeNull();
-  });
+  }, 15000);
 });

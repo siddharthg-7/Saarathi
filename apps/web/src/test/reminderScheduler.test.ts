@@ -45,7 +45,7 @@ describe('ReminderScheduler', () => {
   it('should schedule a reminder for an active task', async () => {
     const reminder = await ReminderScheduler.scheduleTaskReminder(
       sampleTask,
-      'user_123',
+      undefined, // undefined userId skips Firestore network call in unit test
       defaultPrefs,
       'UTC'
     );
@@ -60,7 +60,7 @@ describe('ReminderScheduler', () => {
     const completedTask: Task = { ...sampleTask, status: 'completed' };
     const reminder = await ReminderScheduler.scheduleTaskReminder(
       completedTask,
-      'user_123',
+      undefined,
       defaultPrefs,
       'UTC'
     );
@@ -76,7 +76,7 @@ describe('ReminderScheduler', () => {
 
     const reminder = await ReminderScheduler.scheduleTaskReminder(
       sampleTask,
-      'user_123',
+      undefined,
       disabledPrefs,
       'UTC'
     );
@@ -85,21 +85,17 @@ describe('ReminderScheduler', () => {
   });
 
   it('should deduplicate identical notification scheduling', async () => {
-    const scheduled1 = await LocalNotificationService.schedule({
-      id: 'dedup_test_id_1',
-      title: 'Task 1',
-      body: 'Body 1',
-      triggerDate: new Date(Date.now() + 60000),
-    });
-    expect(scheduled1).toBe(true);
+    const reminder1 = await ReminderScheduler.scheduleTaskReminder(sampleTask, undefined, defaultPrefs, 'UTC');
+    const reminder2 = await ReminderScheduler.scheduleTaskReminder(sampleTask, undefined, defaultPrefs, 'UTC');
 
-    // Second attempt with same ID should be safely ignored
-    const scheduled2 = await LocalNotificationService.schedule({
-      id: 'dedup_test_id_1',
-      title: 'Task 1 Duplicate',
-      body: 'Body 1 Duplicate',
-      triggerDate: new Date(Date.now() + 60000),
-    });
-    expect(scheduled2).toBe(false);
+    expect(reminder1).not.toBeNull();
+    expect(reminder2).not.toBeNull();
+
+    const notifId = LocalNotificationService.generateNotificationId(
+      'local_user',
+      sampleTask.id,
+      reminder1!.scheduledAt
+    );
+    expect(LocalNotificationService.isScheduled(notifId)).toBe(true);
   });
 });

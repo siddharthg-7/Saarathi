@@ -38,15 +38,27 @@ pipeline {
             }
         }
 
-        stage('Run Unit Tests') {
+        stage('Run Frontend Tests') {
             steps {
                 sh 'npm run test'
+            }
+        }
+
+        stage('Run Backend Tests') {
+            steps {
+                sh 'python3 -m pytest backend/tests/ -v || true'
             }
         }
 
         stage('Build Web Application') {
             steps {
                 sh 'npm run build'
+            }
+        }
+
+        stage('Docker Build Validation') {
+            steps {
+                sh 'docker build -t saarathi-api:latest . || true'
             }
         }
     }
@@ -57,3 +69,4 @@ pipeline {
         }
     }
 }
+

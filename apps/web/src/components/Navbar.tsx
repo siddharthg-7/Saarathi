@@ -10,6 +10,7 @@ interface NavbarProps {
   onOpenCommandPalette: () => void;
   onOpenAuth: (mode: AuthModalMode) => void;
   onToggleSidebarMobile: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCommandPalette,
   onOpenAuth,
   onToggleSidebarMobile,
+  onLogout,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
 
@@ -153,13 +155,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => {
-                  onOpenAuth('signin');
                   setShowProfileMenu(false);
+                  if (onLogout) {
+                    onLogout();
+                  } else {
+                    onOpenAuth('signin');
+                  }
                 }}
-                className="w-full text-left px-3 py-2 text-xs text-danger hover:bg-danger/10 rounded-lg flex items-center gap-2 transition-colors"
+                className="w-full text-left px-3 py-2 text-xs text-danger hover:bg-danger/10 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Switch / Sign Out</span>
+                <span>Sign Out</span>
               </button>
             </div>
           )}

@@ -82,6 +82,7 @@ interface TaskState {
   setFilter: (filter: Partial<TaskFilterState>) => void;
   resetFilter: () => void;
   getFilteredTasks: () => Task[];
+  reset: () => void;
 }
 
 const initialFilter: TaskFilterState = {
@@ -94,6 +95,15 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   filter: initialFilter,
   isLoading: false,
   activeUid: null,
+
+  reset: () =>
+    set({
+      tasks: [],
+      projects: [],
+      filter: initialFilter,
+      activeUid: null,
+      isLoading: false,
+    }),
 
   initTaskListener: (uid: string) => {
     set({ activeUid: uid, isLoading: true });

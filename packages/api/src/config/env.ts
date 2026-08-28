@@ -9,11 +9,10 @@ export interface AppEnv {
 
 // Resilient env loader that works in both Vite (import.meta.env) and Expo (process.env)
 const getEnvVar = (key: string, fallback: string): string => {
-  // 1. Try Vite import.meta.env dynamically to prevent compile-time syntax errors in Metro
+  // 1. Try Vite import.meta.env
   try {
-    const viteEnv = (new Function('return import.meta.env'))();
-    if (viteEnv && viteEnv[key] !== undefined) {
-      return viteEnv[key];
+    if (typeof import.meta !== 'undefined' && (import.meta as any)?.env && (import.meta as any).env[key] !== undefined) {
+      return (import.meta as any).env[key];
     }
   } catch {}
 
@@ -35,9 +34,9 @@ const getEnvVar = (key: string, fallback: string): string => {
 
 export const env: AppEnv = {
   apiBaseUrl: getEnvVar('VITE_API_BASE_URL', 'http://localhost:8000/v1'),
-  firebaseApiKey: getEnvVar('VITE_FIREBASE_API_KEY', ''),
-  firebaseAuthDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN', 'saarathi-os.firebaseapp.com'),
-  firebaseProjectId: getEnvVar('VITE_FIREBASE_PROJECT_ID', 'saarathi-os'),
+  firebaseApiKey: getEnvVar('VITE_FIREBASE_API_KEY', 'AIzaSyB4tj4lMaEa-cW_8d9Tdodz4iy5JSOlHQA'),
+  firebaseAuthDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN', 'saarathi-331b4.firebaseapp.com'),
+  firebaseProjectId: getEnvVar('VITE_FIREBASE_PROJECT_ID', 'saarathi-331b4'),
   appName: getEnvVar('VITE_APP_NAME', 'Saarathi OS'),
   enableMockFallback: getEnvVar('VITE_ENABLE_MOCK_FALLBACK', 'true') !== 'false',
 };

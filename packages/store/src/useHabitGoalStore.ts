@@ -12,12 +12,20 @@ interface HabitGoalState {
   toggleHabitDay: (habitId: string, dayIndex: number) => void;
   addHabit: (title: string, category: string, color: string) => void;
   addGoal: (goal: Goal) => Promise<void>;
+  reset: () => void;
 }
 
 export const useHabitGoalStore = create<HabitGoalState>((set, get) => ({
   habits: initialHabits,
   goals: initialGoals,
   activeUid: null,
+
+  reset: () =>
+    set({
+      habits: [],
+      goals: [],
+      activeUid: null,
+    }),
 
   initGoalListener: (uid: string) => {
     set({ activeUid: uid });

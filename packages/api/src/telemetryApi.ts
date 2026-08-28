@@ -17,6 +17,13 @@ export interface TelemetryEventPayload {
   timestamp?: string;
 }
 
+export interface PaginatedTelemetryResponse {
+  items: TelemetryEvent[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  count: number;
+}
+
 export const telemetryApi = {
   /**
    * Backward-compatible legacy logEvent
@@ -99,6 +106,20 @@ export const telemetryApi = {
     return apiClient.get<{ features: MLBehavioralFeatureVector[]; count: number }>(
       `/analytics/ml-dataset?limit=${limit}`
     );
+  },
+
+  /**
+   * High-performance paginated telemetry fetching
+   */
+  async getPaginatedEvents(
+    eventType?: string,
+    pageSize: number = 50,
+    cursor?: string
+  ): Promise<PaginatedTelemetryResponse> {
+    const params = new URLSearchParams({ pageSize: String(pageSize) });
+    if (eventType) params.append('eventType', eventType);
+    if (cursor) params.append('cursor', cursor);
+    return apiClient.get<PaginatedTelemetryResponse>(`/telemetry/events?${params.toString()}`);
   },
 
   /**

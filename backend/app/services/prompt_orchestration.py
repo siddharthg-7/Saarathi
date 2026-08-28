@@ -142,7 +142,7 @@ def orchestrate_chat_prompt(
     tasks: List[Dict[str, Any]] = [],
     memories_context: str = ""
 ) -> str:
-    # Filter down tasks/goals to avoid prompt length blowup
+    # Filter down tasks/goals to avoid prompt length blowup and keep latency low
     active_tasks = [
         {
             "id": t.get("id"),
@@ -164,13 +164,16 @@ def orchestrate_chat_prompt(
         for g in goals if g.get("status") != "completed"
     ][:5]
 
+    # Bound memory context length to avoid unbounded prompt token inflation
+    bounded_memories = memories_context[:2500] if memories_context else ""
+
     return KAIRO_SYSTEM_PROMPT.format(
         location=location,
         energy=energy,
         focus_mode="Yes" if focus_mode else "No",
         goals_json=json.dumps(active_goals),
         tasks_json=json.dumps(active_tasks),
-        memories_context=memories_context
+        memories_context=bounded_memories
     )
 
 def orchestrate_daily_brief_prompt(tasks: List[Dict[str, Any]], goals: List[Dict[str, Any]]) -> str:

@@ -10,9 +10,12 @@ import {
   query,
   where,
   orderBy,
+  limit,
+  startAfter,
   serverTimestamp,
   Unsubscribe,
   SnapshotMetadata,
+  DocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Reminder, NotificationItem, NotificationPreferences } from '@saarathi/types';
@@ -161,12 +164,19 @@ export async function deleteNotificationDoc(
   await deleteDoc(notifRef);
 }
 
+export interface PaginatedNotificationResult {
+  notifications: NotificationItem[];
+  lastVisibleDoc: DocumentSnapshot | null;
+  hasMore: boolean;
+}
+
 export function subscribeToNotifications(
   userId: string,
-  callback: (notifications: NotificationItem[], metadata?: SnapshotMetadata) => void
+  callback: (notifications: NotificationItem[], metadata?: SnapshotMetadata) => void,
+  maxResults: number = 50
 ): Unsubscribe {
   const notifsRef = collection(db, 'users', userId, 'notifications');
-  const q = query(notifsRef, orderBy('timestamp', 'desc'));
+  const q = query(notifsRef, orderBy('timestamp', 'desc'), limit(maxResults));
 
   return onSnapshot(
     q,
@@ -181,6 +191,43 @@ export function subscribeToNotifications(
       console.warn('Notifications subscription error:', error);
     }
   );
+}
+
+/**
+ * High-performance cursor-based pagination for historical notifications
+ */
+export async function fetchNotificationsPaginated(
+  userId: string,
+  pageSize: number = 30,
+  lastVisibleDoc: DocumentSnapshot | null = null,
+  unreadOnly: boolean = false
+): Promise<PaginatedNotificationResult> {
+  const notifsRef = collection(db, 'users', userId, 'notifications');
+  let q = query(notifsRef);
+
+  if (unreadOnly) {
+    q = query(q, where('read', '==', false), orderBy('timestamp', 'desc'), limit(pageSize));
+  } else {
+    q = query(q, orderBy('timestamp', 'desc'), limit(pageSize));
+  }
+
+  if (lastVisibleDoc) {
+    q = query(q, startAfter(lastVisibleDoc));
+  }
+
+  const snapshot = await getDocs(q);
+  const notifications: NotificationItem[] = snapshot.docs.map((d) => ({
+    ...(d.data() as NotificationItem),
+    id: d.id,
+  }));
+
+  const nextLastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+
+  return {
+    notifications,
+    lastVisibleDoc: nextLastDoc,
+    hasMore: snapshot.docs.length === pageSize,
+  };
 }
 
 // ================= PREFERENCES =================

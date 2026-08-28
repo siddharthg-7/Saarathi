@@ -26,6 +26,7 @@ import {
   Zap,
   Info,
   Calendar,
+  LogOut,
 } from 'lucide-react';
 import {
   NotificationItem,
@@ -46,6 +47,7 @@ interface NotificationsProfileViewProps {
   onClearAll: () => void;
   onUpdateProfile: (updated: Partial<UserProfile>) => void;
   onNavigateToTask?: (taskId: string) => void;
+  onLogout?: () => void;
 }
 
 export const NotificationsProfileView: React.FC<NotificationsProfileViewProps> = ({
@@ -55,6 +57,7 @@ export const NotificationsProfileView: React.FC<NotificationsProfileViewProps> =
   onClearAll,
   onUpdateProfile,
   onNavigateToTask,
+  onLogout,
 }) => {
   const {
     preferences,
@@ -199,11 +202,21 @@ export const NotificationsProfileView: React.FC<NotificationsProfileViewProps> =
                 downloadAnchor.click();
                 downloadAnchor.remove();
               }}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl border border-white/10 flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded-xl border border-white/10 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>Export Telemetry</span>
             </button>
+
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-semibold rounded-xl border border-rose-500/30 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

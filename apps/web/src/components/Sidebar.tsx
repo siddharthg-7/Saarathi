@@ -16,6 +16,7 @@ import {
   Sparkles,
   X,
   Zap,
+  LogOut,
 } from 'lucide-react';
 import { ViewType } from '@saarathi/types';
 
@@ -25,6 +26,7 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   unreadNotificationsCount: number;
+  onLogout?: () => void;
 }
 
 interface NavItem {
@@ -41,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   unreadNotificationsCount,
+  onLogout,
 }) => {
   const navSections: { title: string; items: NavItem[] }[] = [
     {
@@ -172,6 +175,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           Peak focus window starts at 09:30 AM. Tackle DBMS Schema first.
         </p>
       </div>
+
+      {onLogout && (
+        <button
+          onClick={() => {
+            onCloseMobile();
+            onLogout();
+          }}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-danger hover:bg-danger/10 border border-danger/20 rounded-xl transition-all cursor-pointer"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out</span>
+        </button>
+      )}
     </div>
   );
 

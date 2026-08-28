@@ -36,6 +36,7 @@ export interface MLState {
     hourlyStats?: any[];
     events?: any[];
   }) => Promise<void>;
+  reset: () => void;
 }
 
 export const useMLStore = create<MLState>((set, get) => ({
@@ -48,6 +49,19 @@ export const useMLStore = create<MLState>((set, get) => ({
   loading: false,
   isColdStart: true,
   lastUpdated: null,
+
+  reset: () =>
+    set({
+      taskRiskMap: {},
+      energyClusters: [],
+      optimalSlots: [],
+      burnoutReport: null,
+      forecast: null,
+      taskClusters: [],
+      loading: false,
+      isColdStart: true,
+      lastUpdated: null,
+    }),
 
   evaluateTaskRisk: async (task: Partial<Task>) => {
     const res = await mlApi.predictTaskRisk(task);

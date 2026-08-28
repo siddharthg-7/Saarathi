@@ -34,15 +34,25 @@ def get_db():
             return None
     return _db
 
-def get_user_tasks(uid: str) -> List[Dict[str, Any]]:
+def get_user_tasks(uid: str, status: Optional[str] = None, limit_count: Optional[int] = 200) -> List[Dict[str, Any]]:
     """
-    Fetch all tasks for a specific user.
+    Fetch tasks for a specific user with optional status filter and bounded limit.
     """
     db = get_db()
     if db is None:
-        return list(_in_memory_tasks.get(uid, []))
+        tasks = list(_in_memory_tasks.get(uid, []))
+        if status:
+            tasks = [t for t in tasks if t.get("status") == status]
+        if limit_count:
+            tasks = tasks[:limit_count]
+        return tasks
     try:
-        docs = db.collection('users').document(uid).collection('tasks').stream()
+        query_ref = db.collection('users').document(uid).collection('tasks')
+        if status:
+            query_ref = query_ref.where(filter=FieldFilter('status', '==', status))
+        if limit_count:
+            query_ref = query_ref.limit(limit_count)
+        docs = query_ref.stream()
         tasks = []
         for doc in docs:
             t = doc.to_dict()
@@ -51,7 +61,72 @@ def get_user_tasks(uid: str) -> List[Dict[str, Any]]:
         return tasks
     except Exception as e:
         logger.warning(f"Error fetching tasks from Firestore for user {uid}: {str(e)}")
-        return list(_in_memory_tasks.get(uid, []))
+        tasks = list(_in_memory_tasks.get(uid, []))
+        if status:
+            tasks = [t for t in tasks if t.get("status") == status]
+        if limit_count:
+            tasks = tasks[:limit_count]
+        return tasks
+
+def get_user_tasks_paginated(
+    uid: str,
+    status: Optional[str] = None,
+    page_size: int = 50,
+    last_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Cursor-based pagination for querying user tasks efficiently.
+    """
+    db = get_db()
+    if db is None:
+        all_tasks = list(_in_memory_tasks.get(uid, []))
+        if status:
+            all_tasks = [t for t in all_tasks if t.get("status") == status]
+        
+        start_idx = 0
+        if last_id:
+            for i, t in enumerate(all_tasks):
+                if t.get("id") == last_id:
+                    start_idx = i + 1
+                    break
+        paginated = all_tasks[start_idx : start_idx + page_size]
+        next_cursor = paginated[-1]["id"] if len(paginated) == page_size else None
+        return {
+            "items": paginated,
+            "nextCursor": next_cursor,
+            "hasMore": len(paginated) == page_size,
+            "count": len(paginated)
+        }
+    try:
+        col_ref = db.collection('users').document(uid).collection('tasks')
+        query_ref = col_ref
+        if status:
+            query_ref = query_ref.where(filter=FieldFilter('status', '==', status))
+        query_ref = query_ref.order_by('createdAt')
+        
+        if last_id:
+            last_doc = col_ref.document(last_id).get()
+            if last_doc.exists:
+                query_ref = query_ref.start_after(last_doc)
+                
+        query_ref = query_ref.limit(page_size)
+        docs = list(query_ref.stream())
+        items = []
+        for doc in docs:
+            t = doc.to_dict()
+            t['id'] = doc.id
+            items.append(t)
+            
+        next_cursor = items[-1]["id"] if len(items) == page_size else None
+        return {
+            "items": items,
+            "nextCursor": next_cursor,
+            "hasMore": len(items) == page_size,
+            "count": len(items)
+        }
+    except Exception as e:
+        logger.warning(f"Error fetching paginated tasks for user {uid}: {str(e)}")
+        return {"items": [], "nextCursor": None, "hasMore": False, "count": 0}
 
 def get_user_projects(uid: str) -> List[Dict[str, Any]]:
     """
@@ -90,6 +165,57 @@ def get_user_goals(uid: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.warning(f"Error fetching goals from Firestore for user {uid}: {str(e)}")
         return list(_in_memory_goals.get(uid, []))
+
+def get_user_telemetry_paginated(
+    uid: str,
+    event_type: Optional[str] = None,
+    page_size: int = 50,
+    last_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Cursor-based pagination for user telemetry events.
+    """
+    db = get_db()
+    if db is None:
+        events = list(_in_memory_telemetry.get(uid, []))
+        if event_type:
+            events = [e for e in events if e.get("eventType") == event_type]
+        start_idx = 0
+        if last_id:
+            for i, e in enumerate(events):
+                if e.get("id") == last_id or e.get("eventId") == last_id:
+                    start_idx = i + 1
+                    break
+        paginated = events[start_idx : start_idx + page_size]
+        next_cursor = (paginated[-1].get("id") or paginated[-1].get("eventId")) if len(paginated) == page_size else None
+        return {
+            "items": paginated,
+            "nextCursor": next_cursor,
+            "hasMore": len(paginated) == page_size,
+            "count": len(paginated)
+        }
+    try:
+        col_ref = db.collection('users').document(uid).collection('telemetry')
+        query_ref = col_ref
+        if event_type:
+            query_ref = query_ref.where(filter=FieldFilter('eventType', '==', event_type))
+        query_ref = query_ref.order_by('timestamp').limit(page_size)
+        docs = list(query_ref.stream())
+        items = []
+        for doc in docs:
+            e = doc.to_dict()
+            e['id'] = doc.id
+            items.append(e)
+        next_cursor = items[-1]["id"] if len(items) == page_size else None
+        return {
+            "items": items,
+            "nextCursor": next_cursor,
+            "hasMore": len(items) == page_size,
+            "count": len(items)
+        }
+    except Exception as e:
+        logger.warning(f"Error fetching paginated telemetry for user {uid}: {str(e)}")
+        return {"items": [], "nextCursor": None, "hasMore": False, "count": 0}
 
 def create_task_direct(
     uid: str,

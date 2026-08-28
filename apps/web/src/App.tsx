@@ -2,14 +2,16 @@ import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { toast } from 'react-toastify';
 import { initialAnalytics } from '@saarathi/store';
 
-// Stores & Contexts
 import { useAuthStore } from '@saarathi/store';
 import { useTaskStore } from '@saarathi/store';
 import { useKairoStore } from '@saarathi/store';
 import { useHabitGoalStore } from '@saarathi/store';
 import { useNotificationStore } from '@saarathi/store';
 import { useAnalyticsStore } from '@saarathi/store';
-import { subscribeToAuthState } from '@saarathi/api';
+import { useMLStore } from '@saarathi/store';
+import { useMemoryStore } from '@saarathi/store';
+import { useXAIStore } from '@saarathi/store';
+import { subscribeToAuthState, signOutUser } from '@saarathi/api';
 import type { UserProfile } from '@saarathi/types';
 import { ThemeProvider } from './context/ThemeContext';
 import { NavigationProvider, useNavigation, isPublicView } from './context/NavigationContext';
@@ -98,11 +100,27 @@ function AppContent() {
           });
         }
       } else {
-        doLogout();
+        if (authed) {
+          doLogout();
+          useTaskStore.getState().reset();
+          useHabitGoalStore.getState().reset();
+          useKairoStore.getState().clearHistory();
+          useNotificationStore.getState().reset();
+          useAnalyticsStore.getState().reset();
+          useMLStore.getState().reset();
+          useMemoryStore.getState().reset();
+          useXAIStore.getState().invalidateCache();
+          try {
+            localStorage.removeItem('saarathi-memory-storage');
+            sessionStorage.clear();
+          } catch {}
+          setCurrentView('landing');
+          navigate('landing');
+        }
       }
     });
     return unsubscribe;
-  }, []);
+  }, [navigate, setCurrentView]);
 
   // 1. Initialize real-time Firestore listeners for Tasks, Goals, Notifications, and Analytics when authenticated
   useEffect(() => {
@@ -154,6 +172,39 @@ function AppContent() {
     login(updated);
     toast.success('Welcome to Saarathi!');
     setCurrentView('dashboard');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+    } catch (e) {
+      console.warn('Sign out error:', e);
+    }
+
+    // 1. Reset auth state
+    logout();
+
+    // 2. Clear all user data from stores to prevent any state leakage
+    useTaskStore.getState().reset();
+    useHabitGoalStore.getState().reset();
+    useKairoStore.getState().clearHistory();
+    useNotificationStore.getState().reset();
+    useAnalyticsStore.getState().reset();
+    useMLStore.getState().reset();
+    useMemoryStore.getState().reset();
+    useXAIStore.getState().invalidateCache();
+
+    // 3. Clear local/session cache
+    try {
+      localStorage.removeItem('saarathi-memory-storage');
+      sessionStorage.clear();
+    } catch {}
+
+    // 4. Ensure modals are closed and redirect to public landing page
+    setAuthModalMode(null);
+    setCurrentView('landing');
+    navigate('landing');
+    toast.info('Signed out successfully.');
   };
 
   // Full Screen Standalone Auth View
@@ -264,7 +315,13 @@ function AppContent() {
       case 'goals':
         return <GoalsSystemView goals={goals} onAddGoal={addGoal} />;
       case 'settings':
-        return <SettingsView userProfile={userProfile} onUpdateProfile={updateUserProfile} />;
+        return (
+          <SettingsView
+            userProfile={userProfile}
+            onUpdateProfile={updateUserProfile}
+            onLogout={handleLogout}
+          />
+        );
       case 'notifications':
       case 'profile':
         return (
@@ -274,6 +331,7 @@ function AppContent() {
             onMarkRead={markAsRead}
             onClearAll={clearAll}
             onUpdateProfile={updateUserProfile}
+            onLogout={handleLogout}
           />
         );
       default:
@@ -300,6 +358,7 @@ function AppContent() {
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         onOpenAuth={(mode) => setAuthModalMode(mode)}
         onToggleSidebarMobile={() => setSidebarMobileOpen(!sidebarMobileOpen)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Layout */}
@@ -311,6 +370,7 @@ function AppContent() {
           isOpenMobile={sidebarMobileOpen}
           onCloseMobile={() => setSidebarMobileOpen(false)}
           unreadNotificationsCount={unreadCount}
+          onLogout={handleLogout}
         />
 
         {/* View Main Content Container with Suspense for Lazy-Loaded Views */}

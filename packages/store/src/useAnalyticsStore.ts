@@ -50,6 +50,7 @@ interface AnalyticsState {
   ) => Promise<void>;
   flushTelemetryQueue: () => Promise<void>;
   initAnalyticsListener: (uid: string) => () => void;
+  reset: () => void;
 }
 
 export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
@@ -59,6 +60,14 @@ export const useAnalyticsStore = create<AnalyticsState>((set, get) => ({
   activeUid: null,
   activeTimezone: TelemetryClient.getTimezone(),
   queueStatus: telemetryQueue.getStatusSummary(),
+
+  reset: () =>
+    set({
+      timeRange: '7d',
+      analyticsData: initialAnalytics,
+      isLoading: false,
+      activeUid: null,
+    }),
 
   setTimeRange: (range) => {
     set({ timeRange: range });

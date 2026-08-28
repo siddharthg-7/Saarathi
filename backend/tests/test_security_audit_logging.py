@@ -1,3 +1,4 @@
+import os
 import pytest
 from app.core.audit import audit_logger, sanitize_audit_metadata, hash_ip
 from app.services.memory.memory_service import MemoryService
@@ -33,10 +34,12 @@ def test_audit_event_generation_on_sensitive_memory_operations():
     assert delete_event.ipHash is not None
 
 def test_audit_metadata_redaction_of_sensitive_data():
+    # Sensitive keys such as Gemini API Key, ID token, and password accessed via env / test harness
+    gemini_key = os.getenv("GEMINI_API_KEY", "test_gemini_api_key_secret_pattern")
     raw_metadata = {
         "user_email": "user@example.com",
         "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMyJ9.eyJuYW1lIjoiQWxpY2UifQ.XYZ",
-        "api_key": "AIzaSyB4tj4lMaEa-cW_8d9Tdodz4iy5JSOlHQA",
+        "api_key": gemini_key,
         "password": "SuperSecretPassword123!",
         "normal_field": "safe_value"
     }
