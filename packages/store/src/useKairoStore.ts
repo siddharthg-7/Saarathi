@@ -1,18 +1,147 @@
 import { create } from 'zustand';
-import { KairoMessage } from '@saarathi/types';
+import { KairoMessage, KairoVisualState, KairoSuggestedAction, KairoVoicePersona } from '@saarathi/types';
 import { initialKairoChatHistory } from './data/initialData';
-import { kairoApi, auth, env, TelemetryClient } from '@saarathi/api';
+import { kairoApi, auth, env, TelemetryClient, LiveVoiceClient } from '@saarathi/api';
+
+let activeLiveVoiceClient: LiveVoiceClient | null = null;
 
 interface KairoState {
   chatHistory: KairoMessage[];
   isThinking: boolean;
+  isListening: boolean;
+  isSpeaking: boolean;
+  speechSynthesisEnabled: boolean;
+  liveVoiceActive: boolean;
+  liveTranscript: string;
+  selectedVoicePersona: KairoVoicePersona;
+  visualState: KairoVisualState;
+  actionCallback: ((action: KairoSuggestedAction) => void) | null;
+  setVisualState: (state: KairoVisualState) => void;
+  setListening: (listening: boolean) => void;
+  setSpeaking: (speaking: boolean) => void;
+  toggleSpeechSynthesis: () => void;
+  setVoicePersona: (persona: KairoVoicePersona) => void;
+  startLiveVoice: () => Promise<void>;
+  stopLiveVoice: () => void;
+  bargeIn: () => void;
+  setActionCallback: (cb: (action: KairoSuggestedAction) => void) => void;
+  executeAction: (action: KairoSuggestedAction) => void;
   sendMessage: (userMessage: string, context?: Record<string, unknown>) => Promise<void>;
   clearHistory: () => void;
 }
 
-export const useKairoStore = create<KairoState>((set) => ({
+export const useKairoStore = create<KairoState>((set, get) => ({
   chatHistory: initialKairoChatHistory,
   isThinking: false,
+  isListening: false,
+  isSpeaking: false,
+  speechSynthesisEnabled: false,
+  liveVoiceActive: false,
+  liveTranscript: '',
+  selectedVoicePersona: 'Puck',
+  visualState: 'IDLE',
+  actionCallback: null,
+
+  setVisualState: (visualState) => set({ visualState }),
+  setListening: (isListening) => set({
+    isListening,
+    visualState: isListening ? 'LISTENING' : get().isThinking ? 'THINKING' : get().isSpeaking ? 'SPEAKING' : 'IDLE'
+  }),
+  setSpeaking: (isSpeaking) => set({
+    isSpeaking,
+    visualState: isSpeaking ? 'SPEAKING' : get().isThinking ? 'THINKING' : get().isListening ? 'LISTENING' : 'IDLE'
+  }),
+  toggleSpeechSynthesis: () => set((state) => ({ speechSynthesisEnabled: !state.speechSynthesisEnabled })),
+  setVoicePersona: (selectedVoicePersona) => {
+    set({ selectedVoicePersona });
+    if (activeLiveVoiceClient) {
+      activeLiveVoiceClient.setVoice(selectedVoicePersona);
+    }
+  },
+
+  startLiveVoice: async () => {
+    if (activeLiveVoiceClient) {
+      activeLiveVoiceClient.stop();
+    }
+
+    const persona = get().selectedVoicePersona;
+    activeLiveVoiceClient = new LiveVoiceClient({
+      voice: persona,
+      onTranscript: (text, isFinal) => {
+        set({ liveTranscript: text });
+        if (isFinal && text.trim()) {
+          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const userMsg: KairoMessage = {
+            id: `msg_voice_${Date.now()}`,
+            role: 'assistant',
+            message: text,
+            timestamp,
+            source: 'gemini-live-audio',
+          };
+          set((state) => ({
+            chatHistory: [...state.chatHistory, userMsg],
+          }));
+        }
+      },
+      onAudioStart: () => {
+        set({ isSpeaking: true, visualState: 'SPEAKING' });
+      },
+      onAudioEnd: () => {
+        set({ isSpeaking: false, visualState: 'LISTENING' });
+      },
+      onActions: (actions) => {
+        actions.forEach((act) => {
+          get().executeAction(act);
+        });
+      },
+      onStateChange: (vState) => {
+        set({
+          visualState: vState,
+          isListening: vState === 'LISTENING',
+          isSpeaking: vState === 'SPEAKING',
+          isThinking: vState === 'THINKING',
+        });
+      },
+      onError: (err) => {
+        console.warn('Live voice client notice:', err);
+        set({ visualState: 'ERROR', liveVoiceActive: false });
+        setTimeout(() => set({ visualState: 'IDLE' }), 2000);
+      },
+    });
+
+    set({ liveVoiceActive: true, visualState: 'LISTENING', isListening: true });
+    await activeLiveVoiceClient.start();
+  },
+
+  stopLiveVoice: () => {
+    if (activeLiveVoiceClient) {
+      activeLiveVoiceClient.stop();
+      activeLiveVoiceClient = null;
+    }
+    set({
+      liveVoiceActive: false,
+      isListening: false,
+      isSpeaking: false,
+      liveTranscript: '',
+      visualState: 'IDLE',
+    });
+  },
+
+  bargeIn: () => {
+    if (activeLiveVoiceClient) {
+      activeLiveVoiceClient.interrupt();
+    }
+    set({ isSpeaking: false, visualState: 'LISTENING' });
+  },
+
+  setActionCallback: (actionCallback) => set({ actionCallback }),
+  executeAction: (action) => {
+    const cb = get().actionCallback;
+    if (cb) {
+      cb(action);
+    }
+  },
+
 
   sendMessage: async (userMessage, context) => {
     const startTime = Date.now();
@@ -37,6 +166,7 @@ export const useKairoStore = create<KairoState>((set) => ({
     set((state) => ({
       chatHistory: [...state.chatHistory, userMsgObj, assistantMsgObj],
       isThinking: true,
+      visualState: 'THINKING',
     }));
 
     // Emit message sent telemetry (data minimization: no message text)
@@ -89,8 +219,13 @@ export const useKairoStore = create<KairoState>((set) => ({
           return {
             chatHistory: history,
             isThinking: false,
+            visualState: 'SUCCESS',
           };
         });
+
+        setTimeout(() => {
+          if (get().visualState === 'SUCCESS') set({ visualState: 'IDLE' });
+        }, 1200);
 
         TelemetryClient.trackKairo('kairo_response_received', {
           sessionId,
@@ -109,6 +244,7 @@ export const useKairoStore = create<KairoState>((set) => ({
           return {
             chatHistory: history,
             isThinking: false,
+            visualState: 'IDLE',
           };
         });
 
@@ -165,8 +301,13 @@ export const useKairoStore = create<KairoState>((set) => ({
               return {
                 chatHistory: history,
                 isThinking: false,
+                visualState: 'SUCCESS',
               };
             });
+
+            setTimeout(() => {
+              if (get().visualState === 'SUCCESS') set({ visualState: 'IDLE' });
+            }, 1200);
 
             TelemetryClient.trackKairo('kairo_response_received', {
               sessionId,

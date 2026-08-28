@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserProfile, UserSettings, AuthModalMode } from '@saarathi/types';
 
 export const fallbackUserProfile: UserProfile = {
@@ -42,51 +43,65 @@ interface AuthState {
   setUserSettings: (settings: UserSettings) => void;
   updateUserProfile: (partial: Partial<UserProfile>) => void;
   updateUserSettings: (partial: Partial<UserSettings>) => void;
-   login: (profile?: Partial<UserProfile>, settings?: Partial<UserSettings>) => void;
+  login: (profile?: Partial<UserProfile>, settings?: Partial<UserSettings>) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  userProfile: fallbackUserProfile,
-  userSettings: fallbackUserSettings,
-  authModalMode: null,
-  isAuthenticated: false,
-  isLoading: true,
-
-  setAuthModalMode: (mode) => set({ authModalMode: mode }),
-
-  setUserProfile: (profile) => set({ userProfile: profile }),
-
-  setUserSettings: (settings) => set({ userSettings: settings }),
-
-  updateUserProfile: (partial) =>
-    set((state) => ({
-      userProfile: { ...state.userProfile, ...partial },
-    })),
-
-  updateUserSettings: (partial) =>
-    set((state) => ({
-      userSettings: { ...state.userSettings, ...partial },
-    })),
-
-  login: (profile, settings) =>
-    set((state) => ({
-      isAuthenticated: true,
-      authModalMode: null,
-      isLoading: false,
-      userProfile: profile ? { ...state.userProfile, ...profile } : state.userProfile,
-      userSettings: settings ? { ...state.userSettings, ...settings } : state.userSettings,
-    })),
-
-  logout: () =>
-    set({
-      isAuthenticated: false,
-      isLoading: false,
-      authModalMode: null,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
       userProfile: fallbackUserProfile,
       userSettings: fallbackUserSettings,
-    }),
+      authModalMode: null,
+      isAuthenticated: false,
+      isLoading: false,
 
-  setLoading: (loading) => set({ isLoading: loading }),
-}));
+      setAuthModalMode: (mode) => set({ authModalMode: mode }),
+
+      setUserProfile: (profile) => set({ userProfile: profile }),
+
+      setUserSettings: (settings) => set({ userSettings: settings }),
+
+      updateUserProfile: (partial) =>
+        set((state) => ({
+          userProfile: { ...state.userProfile, ...partial },
+        })),
+
+      updateUserSettings: (partial) =>
+        set((state) => ({
+          userSettings: { ...state.userSettings, ...partial },
+        })),
+
+      login: (profile, settings) =>
+        set((state) => ({
+          isAuthenticated: true,
+          authModalMode: null,
+          isLoading: false,
+          userProfile: profile ? { ...state.userProfile, ...profile } : state.userProfile,
+          userSettings: settings ? { ...state.userSettings, ...settings } : state.userSettings,
+        })),
+
+      logout: () =>
+        set({
+          isAuthenticated: false,
+          isLoading: false,
+          authModalMode: null,
+          userProfile: fallbackUserProfile,
+          userSettings: fallbackUserSettings,
+        }),
+
+      setLoading: (loading) => set({ isLoading: loading }),
+    }),
+    {
+      name: 'saarathi-auth-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        userProfile: state.userProfile,
+        userSettings: state.userSettings,
+      }),
+    }
+  )
+);
+

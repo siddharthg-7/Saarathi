@@ -61,4 +61,19 @@ describe('useAuthStore', () => {
     expect(state.userProfile.name).toBe('Guest User');
     expect(state.userProfile.email).toBe('');
   });
+
+  it('should persist auth state to localStorage upon login', () => {
+    const { login } = useAuthStore.getState();
+    login({ id: 'usr_persist_99', name: 'Persisted User', email: 'persist@saarathi.ai' });
+
+    const rawStored = localStorage.getItem('saarathi-auth-storage');
+    expect(rawStored).toBeTruthy();
+    if (rawStored) {
+      const parsed = JSON.parse(rawStored);
+      expect(parsed.state.isAuthenticated).toBe(true);
+      expect(parsed.state.userProfile.id).toBe('usr_persist_99');
+      expect(parsed.state.userProfile.email).toBe('persist@saarathi.ai');
+    }
+  });
 });
+

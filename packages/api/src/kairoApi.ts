@@ -1,16 +1,13 @@
 import { apiClient } from './client';
-import { Task } from '@saarathi/types';
+import { Task, KairoSuggestedAction } from '@saarathi/types';
 
 export interface ChatResponse {
   role: 'assistant';
   message: string;
-  suggestedActions?: {
-    actionType: 'START_TASK' | 'RESCHEDULE' | 'BREAK_DOWN';
-    taskId?: string;
-    label: string;
-  }[];
+  suggestedActions?: KairoSuggestedAction[];
   timestamp: string;
   source?: string;
+  requiresConfirmation?: boolean;
 }
 
 export interface DailyBriefingResponse {

@@ -5,6 +5,9 @@ from typing import List, Dict, Any, Tuple, Optional
 from app.services.firestore_service import (
     create_task_direct,
     update_task_direct,
+    delete_task_direct,
+    create_reminder_direct,
+    snooze_reminder_direct,
     create_goal_direct,
     get_user_tasks,
 )
@@ -174,6 +177,66 @@ def execute_single_action(uid: str, action: Dict[str, Any]) -> Optional[Dict[str
                     "updates": updates
                 }
                 
+        elif action_type == "COMPLETE_TASK":
+            task_id = str(params.get("taskId", "")).strip()
+            if not task_id:
+                return None
+            user_tasks = get_user_tasks(uid)
+            task_exists = any(t.get("id") == task_id for t in user_tasks)
+            if not task_exists:
+                logger.warning(f"COMPLETE_TASK rejected: user {uid} does not own task {task_id}")
+                return None
+
+            success = update_task_direct(uid, task_id, {"status": "completed"})
+            if success:
+                return {
+                    "actionType": "COMPLETE_TASK",
+                    "taskId": task_id,
+                    "status": "completed"
+                }
+
+        elif action_type == "DELETE_TASK":
+            task_id = str(params.get("taskId", "")).strip()
+            requires_confirmation = params.get("requiresConfirmation", False)
+            if not task_id:
+                return None
+            user_tasks = get_user_tasks(uid)
+            task_exists = any(t.get("id") == task_id for t in user_tasks)
+            if not task_exists:
+                logger.warning(f"DELETE_TASK rejected: user {uid} does not own task {task_id}")
+                return None
+
+            if not requires_confirmation:
+                delete_task_direct(uid, task_id)
+            return {
+                "actionType": "DELETE_TASK",
+                "taskId": task_id,
+                "requiresConfirmation": requires_confirmation
+            }
+
+        elif action_type == "CREATE_REMINDER":
+            title = str(params.get("title", "")).strip()
+            if not title:
+                return None
+            rem = create_reminder_direct(uid, title, params.get("scheduledTime"))
+            return {
+                "actionType": "CREATE_REMINDER",
+                "reminderId": rem.get("id"),
+                "reminder": rem
+            }
+
+        elif action_type == "SNOOZE_REMINDER":
+            reminder_id = str(params.get("reminderId", "")).strip()
+            snooze_min = int(params.get("snoozeMinutes", 15))
+            if not reminder_id:
+                return None
+            snooze_reminder_direct(uid, reminder_id, snooze_min)
+            return {
+                "actionType": "SNOOZE_REMINDER",
+                "reminderId": reminder_id,
+                "snoozeMinutes": snooze_min
+            }
+
         elif action_type == "CREATE_GOAL":
             title = str(params.get("title", "")).strip()
             if not title or len(title) > 200:
@@ -250,7 +313,7 @@ def execute_single_action(uid: str, action: Dict[str, Any]) -> Optional[Dict[str
                 "content": mem.content
             }
                 
-        elif action_type == "START_TASK":
+        elif action_type in ["START_TASK", "START_FOCUS"]:
             task_id = str(params.get("taskId", "")).strip()
             if task_id:
                 user_tasks = get_user_tasks(uid)
@@ -259,8 +322,13 @@ def execute_single_action(uid: str, action: Dict[str, Any]) -> Optional[Dict[str
                         "actionType": "START_TASK",
                         "taskId": task_id
                     }
+            return {
+                "actionType": "START_TASK",
+                "taskId": task_id or "focus_general"
+            }
                 
     except Exception as e:
         logger.error(f"Error executing action {action_type}: {str(e)}")
         
     return None
+

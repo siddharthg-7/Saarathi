@@ -14,5 +14,7 @@ export * from './telemetry';
 export * from './analytics';
 export * from './memoryApi';
 export * from './resilience';
+export * from './liveVoiceClient';
 export * from './config/env';
+
 

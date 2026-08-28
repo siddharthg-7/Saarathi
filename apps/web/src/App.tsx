@@ -21,6 +21,7 @@ import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { CommandPalette } from './components/CommandPalette';
 import { AuthModal } from './components/AuthModal';
+import { KairoAssistantWidget } from './components/kairo/KairoAssistantWidget';
 
 // Core Critical-Path Views (Eagerly Loaded)
 import { AuthView } from './views/AuthView';
@@ -87,40 +88,20 @@ function AppContent() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // 0. Bootstrap persistent auth session
+  // 0. Sync auth state from Firebase when available
   useEffect(() => {
-    const unsubscribe = subscribeToAuthState((user) => {
-      const { isAuthenticated: authed, login: doLogin, logout: doLogout } = useAuthStore.getState();
-      if (user) {
-        if (!authed) {
-          doLogin({
-            id: user.uid,
-            name: user.displayName || user.email?.split('@')[0] || 'User',
-            email: user.email || '',
-          });
-        }
-      } else {
-        if (authed) {
-          doLogout();
-          useTaskStore.getState().reset();
-          useHabitGoalStore.getState().reset();
-          useKairoStore.getState().clearHistory();
-          useNotificationStore.getState().reset();
-          useAnalyticsStore.getState().reset();
-          useMLStore.getState().reset();
-          useMemoryStore.getState().reset();
-          useXAIStore.getState().invalidateCache();
-          try {
-            localStorage.removeItem('saarathi-memory-storage');
-            sessionStorage.clear();
-          } catch {}
-          setCurrentView('landing');
-          navigate('landing');
-        }
+    const unsubscribe = subscribeToAuthState((firebaseUser) => {
+      if (firebaseUser) {
+        const { userProfile: currentProfile, login: doLogin } = useAuthStore.getState();
+        doLogin({
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || currentProfile.name || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || currentProfile.email || '',
+        });
       }
     });
     return unsubscribe;
-  }, [navigate, setCurrentView]);
+  }, []);
 
   // 1. Initialize real-time Firestore listeners for Tasks, Goals, Notifications, and Analytics when authenticated
   useEffect(() => {
@@ -151,7 +132,7 @@ function AppContent() {
     }
   }, [isAuthenticated, tasks]);
 
-  // Security: Route guard.
+  // Security: Route guard for protected views
   useEffect(() => {
     if (!isPublicView(currentView) && !isAuthenticated) {
       setAuthModalMode('signin');
@@ -164,14 +145,15 @@ function AppContent() {
     if (!isAuthenticated) {
       setAuthModalMode('signin');
     } else {
-      setCurrentView('dashboard');
+      navigate('dashboard');
     }
   };
 
   const handleAuthSuccess = (updated?: Partial<UserProfile>) => {
     login(updated);
+    setAuthModalMode(null);
     toast.success('Welcome to Saarathi!');
-    setCurrentView('dashboard');
+    navigate('dashboard');
   };
 
   const handleLogout = async () => {
@@ -197,12 +179,12 @@ function AppContent() {
     // 3. Clear local/session cache
     try {
       localStorage.removeItem('saarathi-memory-storage');
+      localStorage.removeItem('saarathi-auth-storage');
       sessionStorage.clear();
     } catch {}
 
     // 4. Ensure modals are closed and redirect to public landing page
     setAuthModalMode(null);
-    setCurrentView('landing');
     navigate('landing');
     toast.info('Signed out successfully.');
   };
@@ -396,6 +378,15 @@ function AppContent() {
         onClose={() => setAuthModalMode(null)}
         onSuccess={handleAuthSuccess}
       />
+
+      {/* Global Kairo Floating Assistant */}
+      {isAuthenticated && (
+        <KairoAssistantWidget
+          tasks={tasks}
+          onSelectView={(v) => setCurrentView(v)}
+          onPostponeTask={postponeTask}
+        />
+      )}
     </div>
   );
 }

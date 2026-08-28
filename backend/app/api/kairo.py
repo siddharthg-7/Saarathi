@@ -1,11 +1,14 @@
 import re
 import json
 import uuid
+import base64
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException
 from pydantic import BaseModel
+from app.services.stt.gemini_live_bridge import GeminiLiveVoiceBridge, VOICE_PERSONAS
 from app.core.security import verify_firebase_token, decode_and_verify_token
 from app.core.rate_limiter import rate_limit, RateLimitTier
 from app.services.firestore_service import (
@@ -46,9 +49,16 @@ class SuggestedAction(BaseModel):
     actionType: str
     taskId: Optional[str] = None
     goalId: Optional[str] = None
+    reminderId: Optional[str] = None
+    memoryId: Optional[str] = None
     task: Optional[Dict[str, Any]] = None
     goal: Optional[Dict[str, Any]] = None
+    reminder: Optional[Dict[str, Any]] = None
     updates: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+    snoozeMinutes: Optional[int] = None
+    requiresConfirmation: Optional[bool] = False
+    label: Optional[str] = None
 
 class ChatResponse(BaseModel):
     role: str = "assistant"
@@ -175,10 +185,16 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
                     "actionType": act.get("actionType", ""),
                     "taskId": act.get("taskId"),
                     "goalId": act.get("goalId"),
+                    "reminderId": act.get("reminderId"),
+                    "memoryId": act.get("memoryId"),
                     "task": act.get("task"),
                     "goal": act.get("goal"),
+                    "reminder": act.get("reminder"),
                     "updates": act.get("updates"),
-                    "label": act.get("actionType", "").replace('_', ' ')
+                    "status": act.get("status"),
+                    "snoozeMinutes": act.get("snoozeMinutes"),
+                    "requiresConfirmation": act.get("requiresConfirmation", False),
+                    "label": act.get("actionType", "").replace('_', ' ').title()
                 })
             
             save_chat_message(uid, "user", message)
@@ -209,6 +225,115 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
             await websocket.close()
         except Exception:
             pass
+
+@router.websocket("/live-voice/ws")
+async def kairo_live_voice_websocket(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+    voice: Optional[str] = Query("Puck")
+):
+    """
+    Bidirectional native audio-to-audio WebSocket endpoint powered by Gemini Live API.
+    Streams microphone PCM chunks up, receives real-time audio bytes + live transcripts down,
+    and executes voice-triggered productivity tool actions with barge-in support.
+    """
+    await websocket.accept()
+
+    uid = "dev_user"
+    if token:
+        try:
+            uid = decode_and_verify_token(token)
+        except Exception:
+            logger.debug("Token verification fallback for Live Voice WS")
+            uid = "mock_user"
+
+    bridge = GeminiLiveVoiceBridge(voice=voice or "Puck")
+    audio_queue: asyncio.Queue = asyncio.Queue()
+
+    # Pre-fetch user context for grounding
+    tasks = get_user_tasks(uid)
+    goals = get_user_goals(uid)
+    system_prompt = orchestrate_chat_prompt(
+        location="Real-time Voice",
+        energy="High",
+        focus_mode=False,
+        goals=goals,
+        tasks=tasks
+    )
+
+    is_running = True
+
+    async def incoming_ws_loop():
+        nonlocal is_running
+        try:
+            while is_running:
+                message = await websocket.receive()
+                if "bytes" in message and message["bytes"]:
+                    await audio_queue.put(message["bytes"])
+                elif "text" in message and message["text"]:
+                    data = json.loads(message["text"])
+                    msg_type = data.get("type")
+                    if msg_type == "interrupt":
+                        # Client barge-in: flush audio queue
+                        while not audio_queue.empty():
+                            try:
+                                audio_queue.get_nowait()
+                            except asyncio.QueueEmpty:
+                                break
+                    elif msg_type == "set_voice":
+                        new_voice = data.get("voice", "Puck")
+                        bridge.set_voice(new_voice)
+                        await websocket.send_json({
+                            "type": "voice_updated",
+                            "voice": bridge.voice_name
+                        })
+                    elif msg_type == "audio_chunk" and "data" in data:
+                        raw_pcm = base64.b64decode(data["data"])
+                        await audio_queue.put(raw_pcm)
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            logger.debug(f"Live voice incoming loop ended: {e}")
+        finally:
+            is_running = False
+            await audio_queue.put(None)
+
+    async def outgoing_stream_loop():
+        nonlocal is_running
+        try:
+            # Emit session started confirmation
+            await websocket.send_json({
+                "type": "session_started",
+                "voice": bridge.voice_name,
+                "isLive": bridge.is_live_available
+            })
+
+            async for event in bridge.stream_live_session(
+                incoming_audio_queue=audio_queue,
+                system_instruction=system_prompt,
+                uid=uid
+            ):
+                if not is_running:
+                    break
+                await websocket.send_json(event)
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            logger.debug(f"Live voice outgoing stream ended: {e}")
+        finally:
+            is_running = False
+
+    t1 = asyncio.create_task(incoming_ws_loop())
+    t2 = asyncio.create_task(outgoing_stream_loop())
+    done, pending = await asyncio.wait([t1, t2], return_when=asyncio.FIRST_COMPLETED)
+    for p in pending:
+        p.cancel()
+        try:
+            await p
+        except (asyncio.CancelledError, Exception):
+            pass
+
+
 
 @router.post("/chat", response_model=ChatResponse, dependencies=[Depends(rate_limit(RateLimitTier.KAIRO_CHAT))])
 async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_firebase_token)):
@@ -283,9 +408,16 @@ async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_fireba
             actionType=act.get("actionType", ""),
             taskId=act.get("taskId"),
             goalId=act.get("goalId"),
+            reminderId=act.get("reminderId"),
+            memoryId=act.get("memoryId"),
             task=act.get("task"),
             goal=act.get("goal"),
-            updates=act.get("updates")
+            reminder=act.get("reminder"),
+            updates=act.get("updates"),
+            status=act.get("status"),
+            snoozeMinutes=act.get("snoozeMinutes"),
+            requiresConfirmation=act.get("requiresConfirmation", False),
+            label=act.get("actionType", "").replace('_', ' ').title()
         ))
         
     # 8. Save conversations to chat history

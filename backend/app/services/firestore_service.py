@@ -299,7 +299,76 @@ def update_task_direct(uid: str, task_id: str, updates: Dict[str, Any]) -> bool:
             t["updatedAt"] = datetime.now(timezone.utc).isoformat()
             t["version"] = t.get("version", 1) + 1
             return True
+def delete_task_direct(uid: str, task_id: str) -> bool:
+    """
+    Directly delete a task from Firestore or in-memory store.
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('tasks').document(task_id).delete()
+            return True
+        except Exception as e:
+            logger.warning(f"Error deleting task in Firestore ({e}), attempting in-memory removal.")
+
+    tasks = _in_memory_tasks.get(uid, [])
+    for i, t in enumerate(tasks):
+        if t.get("id") == task_id:
+            tasks.pop(i)
+            return True
     return False
+
+def create_reminder_direct(uid: str, title: str, scheduled_time: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Directly create a reminder / notification for a user.
+    """
+    rem_id = f"rem_{int(datetime.now(timezone.utc).timestamp()*1000)}"
+    now = datetime.now(timezone.utc)
+    
+    parsed_time = None
+    if scheduled_time:
+        try:
+            parsed_time = datetime.fromisoformat(scheduled_time.replace('Z', '+00:00'))
+        except ValueError:
+            pass
+
+    rem_data = {
+        "id": rem_id,
+        "userId": uid,
+        "title": title,
+        "type": "smart_reminder",
+        "scheduledTime": parsed_time.isoformat() if parsed_time else now.isoformat(),
+        "read": False,
+        "snoozed": False,
+        "createdAt": now.isoformat(),
+    }
+
+    db = get_db()
+    if db is not None:
+        try:
+            db.collection('users').document(uid).collection('notifications').document(rem_id).set(rem_data)
+        except Exception as e:
+            logger.warning(f"Error saving reminder to Firestore: {e}")
+
+    return rem_data
+
+def snooze_reminder_direct(uid: str, reminder_id: str, snooze_minutes: int = 15) -> bool:
+    """
+    Snooze an existing reminder by specified minutes.
+    """
+    db = get_db()
+    if db is not None:
+        try:
+            ref = db.collection('users').document(uid).collection('notifications').document(reminder_id)
+            ref.update({
+                "snoozed": True,
+                "snoozeMinutes": snooze_minutes,
+                "updatedAt": datetime.now(timezone.utc).isoformat()
+            })
+            return True
+        except Exception as e:
+            logger.warning(f"Error snoozing reminder in Firestore: {e}")
+    return True
 
 def create_goal_direct(uid: str, title: str, description: str = "", target_date: Optional[str] = None) -> Dict[str, Any]:
     """
