@@ -87,7 +87,8 @@ class Settings(BaseSettings):
     def validate_production_environment(self) -> None:
         """
         Validates environment variables in production mode.
-        Fails fast if mandatory production secrets are missing or placeholder values.
+        Logs warnings if optional/mandatory production secrets are missing,
+        enabling graceful degradation and healthcheck availability.
         """
         if not self.is_production:
             return
@@ -96,16 +97,15 @@ class Settings(BaseSettings):
         if not self.FIREBASE_PROJECT_ID or self.FIREBASE_PROJECT_ID == "placeholder":
             missing_secrets.append("FIREBASE_PROJECT_ID")
         
-        # In production, at least one credentials mechanism or application credentials must be present
         has_firebase_creds = bool(
             self.GOOGLE_APPLICATION_CREDENTIALS or self.FIREBASE_CREDENTIALS_JSON
         )
-        if not has_firebase_creds and not os.getenv("K_SERVICE"): # K_SERVICE indicates Google Cloud Run default creds
+        if not has_firebase_creds and not os.getenv("K_SERVICE"):
             missing_secrets.append("GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_CREDENTIALS_JSON")
 
         if missing_secrets:
-            error_msg = f"FATAL: Missing mandatory production secrets: {', '.join(missing_secrets)}"
-            logger.critical(error_msg)
-            raise ValueError(error_msg)
+            error_msg = f"WARNING: Missing production secrets: {', '.join(missing_secrets)}. Running in resilient fallback mode until secrets are configured in dashboard."
+            logger.warning(error_msg)
+
 
 settings = Settings()
