@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException
 from pydantic import BaseModel
-from app.core.security import verify_firebase_token
+from app.core.security import verify_firebase_token, decode_and_verify_token
+from app.core.rate_limiter import rate_limit, RateLimitTier
 from app.services.firestore_service import (
     get_user_tasks,
     get_user_goals,
@@ -70,16 +71,18 @@ class DailyBriefResponse(BaseModel):
 
 @router.websocket("/chat/ws")
 async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
-    await websocket.accept()
-    
     auth_token = token or websocket.query_params.get("token")
     try:
-        from app.core.security import decode_token_payload
-        payload = decode_token_payload(auth_token) if auth_token else {}
-        uid = payload.get("uid") or payload.get("user_id") or payload.get("sub") or "dev-user-uid"
+        auth_user = decode_and_verify_token(auth_token)
+        uid = auth_user.uid
     except Exception as e:
-        logger.warning(f"WebSocket auth fallback: {e}")
-        uid = "dev-user-uid"
+        logger.warning(f"WebSocket auth rejected: {e}")
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "message": "Authentication failed. Invalid or missing token."})
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
 
     try:
         while True:
@@ -207,7 +210,7 @@ async def chat_ws(websocket: WebSocket, token: Optional[str] = Query(None)):
         except Exception:
             pass
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(rate_limit(RateLimitTier.KAIRO_CHAT))])
 async def chat_with_kairo(payload: ChatRequest, uid: str = Depends(verify_firebase_token)):
     req_id = payload.requestId or f"req_{uuid.uuid4().hex[:12]}"
 

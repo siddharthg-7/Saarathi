@@ -18,6 +18,7 @@ const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8
 
 const OWNER = 'owner-uid';
 const OTHER = 'other-uid';
+const ADMIN = 'admin-uid';
 
 let testEnv;
 let allowPass = 0;
@@ -54,9 +55,10 @@ async function main() {
 
   const ownerDb = testEnv.authenticatedContext(OWNER).firestore();
   const otherDb = testEnv.authenticatedContext(OTHER).firestore();
+  const adminDb = testEnv.authenticatedContext(ADMIN, { admin: true }).firestore();
   const anonDb = testEnv.unauthenticatedContext().firestore();
 
-  console.log('\n=== ALLOW CASES (authenticated owner) ===');
+  console.log('\n=== ALLOW CASES (authenticated owner & admin) ===');
 
   // Profile (users/{uid})
   await checkAllow('owner create own profile', setDoc(doc(ownerDb, 'users', OWNER), { uid: OWNER, email: 'a@b.co' }));
@@ -102,7 +104,11 @@ async function main() {
   // Sessions (sessions/{uid}/user_sessions/{id})
   await checkAllow('owner write own session', setDoc(doc(ownerDb, 'sessions', OWNER, 'user_sessions', 's1'), { uid: OWNER }));
 
-  console.log('\n=== DENY CASES (cross-user / unauthenticated) ===');
+  // Admin access
+  await checkAllow('admin read owner profile', getDoc(doc(adminDb, 'users', OWNER)));
+  await checkAllow('admin read audit logs', getDoc(doc(adminDb, 'audit_logs', 'log_1')));
+
+  console.log('\n=== DENY CASES (cross-user / unauthenticated / immutability) ===');
 
   // Cross-user: OTHER touches OWNER's data
   await checkDeny('other read owner profile', getDoc(doc(otherDb, 'users', OWNER)));
@@ -122,8 +128,16 @@ async function main() {
   // Owner writing to a path owned by a different uid
   await checkDeny('owner writes under other uid path', setDoc(doc(ownerDb, 'users', OTHER), { uid: OTHER }));
 
+  // Field immutability: owner trying to assign mismatching uid field
+  await checkDeny('owner assigns foreign uid in document data', setDoc(doc(ownerDb, 'users', OWNER, 'tasks', 't_bad'), { uid: OTHER, title: 'bad' }));
+
   // Profile deletion is forbidden
   await checkDeny('owner delete own profile', deleteDoc(doc(ownerDb, 'users', OWNER)));
+
+  // Audit log protections: client cannot create, update, or delete audit logs
+  await checkDeny('client create audit log', setDoc(doc(ownerDb, 'audit_logs', 'log_2'), { action: 'hack' }));
+  await checkDeny('admin delete audit log', deleteDoc(doc(adminDb, 'audit_logs', 'log_1')));
+  await checkDeny('other read audit logs', getDoc(doc(otherDb, 'audit_logs', 'log_1')));
 
   // Unauthenticated access
   await checkDeny('anon read owner profile', getDoc(doc(anonDb, 'users', OWNER)));
@@ -131,6 +145,7 @@ async function main() {
   await checkDeny('anon read owner telemetry', getDoc(doc(anonDb, 'users', OWNER, 'telemetry', 'evt1')));
   await checkDeny('anon write profile', setDoc(doc(anonDb, 'users', 'anon'), { uid: 'anon' }));
   await checkDeny('anon read settings', getDoc(doc(anonDb, 'settings', OWNER)));
+  await checkDeny('anon read audit logs', getDoc(doc(anonDb, 'audit_logs', 'log_1')));
 
   console.log('\n=== RESULT ===');
   console.log(`Allow cases passed: ${allowPass}`);

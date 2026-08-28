@@ -1,7 +1,9 @@
 import logging
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from app.core.security import verify_firebase_token
+from app.core.rate_limiter import rate_limit, RateLimitTier
+from app.core.audit import audit_logger
 from app.models import (
     MemoryCreateRequest,
     MemoryUpdateRequest,
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/memory", tags=["Long-Term Memory"])
 
-@router.post("/index", response_model=MemoryItemModel)
+@router.post("/index", response_model=MemoryItemModel, dependencies=[Depends(rate_limit(RateLimitTier.DEFAULT))])
 async def index_memory(
     req: MemoryCreateRequest,
     uid: str = Depends(verify_firebase_token)
@@ -28,7 +30,7 @@ async def index_memory(
         logger.error(f"Error indexing memory for user {uid}: {e}")
         raise HTTPException(status_code=500, detail="Failed to index memory")
 
-@router.post("/search", response_model=MemorySearchResponse)
+@router.post("/search", response_model=MemorySearchResponse, dependencies=[Depends(rate_limit(RateLimitTier.MEMORY_SEARCH))])
 async def search_memories(
     req: MemorySearchRequest,
     uid: str = Depends(verify_firebase_token)
@@ -101,14 +103,29 @@ async def delete_memory(
     hard: bool = Query(False),
     uid: str = Depends(verify_firebase_token)
 ):
-    """Delete or deactivate a memory item."""
+    """Delete or deactivate a memory item with audit logging."""
     success = MemoryService.delete_memory(uid=uid, memory_id=memory_id, hard_delete=hard)
+    audit_logger.log(
+        user_id=uid,
+        action="memory.delete",
+        resource_type="memory",
+        resource_id=memory_id,
+        result="success" if success else "error",
+        metadata={"hard_delete": hard}
+    )
     return {"status": "ok", "deleted": success, "memoryId": memory_id}
 
 @router.post("/clear")
 async def clear_all_memories(
     uid: str = Depends(verify_firebase_token)
 ):
-    """Clear all long-term memories for the authenticated user."""
+    """Clear all long-term memories for the authenticated user with audit logging."""
     count = MemoryService.clear_memories(uid=uid)
+    audit_logger.log(
+        user_id=uid,
+        action="memory.clear",
+        resource_type="memory",
+        result="success",
+        metadata={"cleared_count": count}
+    )
     return {"status": "ok", "clearedCount": count}

@@ -11,17 +11,32 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    // Ownership immutability: clients cannot reassign documents to another user
+    function doesNotModifyOwnership(userId) {
+      return (!('uid' in request.resource.data) || request.resource.data.uid == userId)
+          && (!('userId' in request.resource.data) || request.resource.data.userId == userId);
+    }
+
     // User profiles security rules
     match /users/{userId} {
-      allow read, create, update: if isOwner(userId);
-      allow delete: if false; // User accounts cannot be deleted directly without admin review
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && doesNotModifyOwnership(userId);
+      allow update: if isOwner(userId) && doesNotModifyOwnership(userId);
+      allow delete: if false; // Profile deletion must go through secure server deletion protocol
 
-      // All data owned by a user lives in per-user subcollections
-      // (tasks, projects, goals, ...). Scoping the recursive wildcard
-      // INSIDE this match ensures it only applies to documents below the
-      // profile and can never grant delete on the profile document itself.
+      // All per-user subcollections (tasks, projects, goals, telemetry, analytics, etc.)
       match /{document=**} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && doesNotModifyOwnership(userId);
+        allow update: if isOwner(userId) && doesNotModifyOwnership(userId);
+        allow delete: if isOwner(userId);
       }
     }
 
@@ -38,6 +53,12 @@ service cloud.firestore {
     // User sessions subcollection
     match /sessions/{userId}/user_sessions/{sessionId} {
       allow read, write: if isOwner(userId);
+    }
+
+    // Security Audit Logs: Immutable, server-written only, admin-readable
+    match /audit_logs/{auditId} {
+      allow read: if isAdmin();
+      allow write: if false; // Normal clients cannot write or delete audit events
     }
   }
 }

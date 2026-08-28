@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { toast } from 'react-toastify';
 import { initialAnalytics } from '@saarathi/store';
 
@@ -20,21 +20,33 @@ import { Sidebar } from './components/Sidebar';
 import { CommandPalette } from './components/CommandPalette';
 import { AuthModal } from './components/AuthModal';
 
-// Views
+// Core Critical-Path Views (Eagerly Loaded)
 import { AuthView } from './views/AuthView';
 import { LandingPage } from './views/LandingPage';
 import { DashboardView } from './views/DashboardView';
 import { TodayView } from './views/TodayView';
-import { CalendarView } from './views/CalendarView';
-import { TaskBoardView } from './views/TaskBoardView';
-import { AIChatView } from './views/AIChatView';
-import { AnalyticsView } from './views/AnalyticsView';
-import { BrainDumpView } from './views/BrainDumpView';
-import { FocusModeView } from './views/FocusModeView';
-import { HabitsEngineView } from './views/HabitsEngineView';
-import { GoalsSystemView } from './views/GoalsSystemView';
-import { SettingsView } from './views/SettingsView';
-import { NotificationsProfileView } from './views/NotificationsProfileView';
+
+// Secondary / Heavy Views (Dynamically Code-Split via React.lazy)
+const CalendarView = lazy(() => import('./views/CalendarView').then(m => ({ default: m.CalendarView })));
+const TaskBoardView = lazy(() => import('./views/TaskBoardView').then(m => ({ default: m.TaskBoardView })));
+const AIChatView = lazy(() => import('./views/AIChatView').then(m => ({ default: m.AIChatView })));
+const AnalyticsView = lazy(() => import('./views/AnalyticsView').then(m => ({ default: m.AnalyticsView })));
+const BrainDumpView = lazy(() => import('./views/BrainDumpView').then(m => ({ default: m.BrainDumpView })));
+const FocusModeView = lazy(() => import('./views/FocusModeView').then(m => ({ default: m.FocusModeView })));
+const HabitsEngineView = lazy(() => import('./views/HabitsEngineView').then(m => ({ default: m.HabitsEngineView })));
+const GoalsSystemView = lazy(() => import('./views/GoalsSystemView').then(m => ({ default: m.GoalsSystemView })));
+const SettingsView = lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })));
+const NotificationsProfileView = lazy(() => import('./views/NotificationsProfileView').then(m => ({ default: m.NotificationsProfileView })));
+
+// Sleek Suspense Fallback Loader
+const ViewLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[350px] w-full" data-testid="view-loader">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+      <span className="text-xs text-text-muted font-medium animate-pulse">Loading view...</span>
+    </div>
+  </div>
+);
 
 function AppContent() {
   const { currentView, setCurrentView, navigate } = useNavigation();
@@ -73,8 +85,7 @@ function AppContent() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // 0. Bootstrap persistent auth session (so a refresh keeps the user logged in
-  //    and the route guard reflects the real authentication state).
+  // 0. Bootstrap persistent auth session
   useEffect(() => {
     const unsubscribe = subscribeToAuthState((user) => {
       const { isAuthenticated: authed, login: doLogin, logout: doLogout } = useAuthStore.getState();
@@ -122,10 +133,7 @@ function AppContent() {
     }
   }, [isAuthenticated, tasks]);
 
-
-  // Security: Route guard. Any view that is not public requires authentication.
-  // If an unauthenticated user navigates (incl. by editing the URL hash) to a
-  // protected view, bounce them back to the landing page and prompt sign-in.
+  // Security: Route guard.
   useEffect(() => {
     if (!isPublicView(currentView) && !isAuthenticated) {
       setAuthModalMode('signin');
@@ -158,7 +166,7 @@ function AppContent() {
     );
   }
 
-  // 1. Landing Page Flow (Full Screen, Landing Header -> Auth Modal Popup -> Main Workspace)
+  // 1. Landing Page Flow
   if (currentView === 'landing') {
     return (
       <div className="min-h-screen bg-background text-text font-sans selection:bg-primary/20 selection:text-primary">
@@ -305,9 +313,11 @@ function AppContent() {
           unreadNotificationsCount={unreadCount}
         />
 
-        {/* View Main Content Container */}
+        {/* View Main Content Container with Suspense for Lazy-Loaded Views */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-full">
-          {renderCurrentView()}
+          <Suspense fallback={<ViewLoadingFallback />}>
+            {renderCurrentView()}
+          </Suspense>
         </main>
       </div>
 

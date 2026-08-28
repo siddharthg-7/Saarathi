@@ -26,17 +26,27 @@ def test_resilience_metrics_endpoint():
     assert "cacheHitRate" in data
 
 def test_resilience_circuit_reset_endpoint():
-    response = client.post("/v1/resilience/circuit/reset", json={"provider": "groq"})
+    response = client.post(
+        "/v1/resilience/circuit/reset",
+        json={"provider": "groq"},
+        headers={"Authorization": "Bearer dev-admin-operator"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
     assert "groq" in data["resetProviders"]
 
 def test_resilience_cache_endpoints():
-    stats_res = client.get("/v1/resilience/cache/stats")
+    stats_res = client.get(
+        "/v1/resilience/cache/stats",
+        headers={"Authorization": "Bearer dev-admin-operator"}
+    )
     assert stats_res.status_code == 200
     assert "hits" in stats_res.json()
 
-    clear_res = client.post("/v1/resilience/cache/clear")
+    clear_res = client.post(
+        "/v1/resilience/cache/clear",
+        headers={"Authorization": "Bearer dev-admin-operator"}
+    )
     assert clear_res.status_code == 200
     assert clear_res.json()["status"] == "ok"

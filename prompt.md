@@ -1,1151 +1,1325 @@
-# Phase 12 — Saarathi Resilience & Reliability Engine
+# Phase 13 — Saarathi Performance Optimization
 
 You are continuing development of Saarathi, an AI-powered personal productivity platform.
 
-AI assistant: Kairo
+Project:
+Saarathi
 
-The previous phases are already implemented:
+AI Assistant:
+Kairo
 
-- Phase 7 — Notification & Smart Reminder Engine
-- Phase 8 — Analytics & Behavioral Telemetry
-- Phase 9 — Behavioral ML
-- Phase 10 — Explainable AI (XAI)
-- Phase 11 — Long-Term Memory & Hybrid Retrieval
+Goal:
+Optimize Saarathi for fast, smooth, low-resource operation across Web and Mobile without breaking existing functionality.
 
-Phase 12 is partially implemented.
+The application architecture currently includes:
 
-Existing completed capability:
+Frontend:
+- React
+- React Native
+- Expo
+- Web
 
-- Groq LLM fallback to Gemini on rate limit/outage
-- Existing implementation: backend/app/services/ai_service.py
+Backend:
+- FastAPI
+- Python
 
-Your job is to complete Phase 12 without breaking existing functionality.
+State:
+- Zustand
+- React Query where already used
 
-==================================================
-OBJECTIVE
-==================================================
+Database:
+- Firebase Authentication
+- Firestore
+- Firebase Storage
+- Supabase
+- pgvector
 
-Make Saarathi resilient to:
+AI:
+- Groq
+- Gemini
+- Deepgram
+- Whisper fallback
 
-- temporary API outages
-- rate limits
-- network failures
-- provider timeouts
-- backend restarts
-- AI provider degradation
-- Deepgram failures
-- temporary loss of connectivity
-- interrupted voice processing
-- duplicate requests
-- transient Firestore/Supabase failures
+Other:
+- WebSockets
+- Offline-first synchronization
+- Notifications
+- Behavioral telemetry
+- ML predictions
+- Long-term memory
 
-The core principle is:
+Existing Phase 13 status:
 
-Saarathi must degrade gracefully rather than fail completely.
+[x] Monorepo bundle isolation — 2026-08-04
 
-If an AI feature becomes unavailable, the core Todo application must continue working.
+Remaining:
 
-==================================================
-IMPORTANT ARCHITECTURAL RULE
-==================================================
-
-Before changing anything:
-
-INSPECT the existing codebase.
-
-Specifically inspect:
-
-backend/app/services/ai_service.py
-backend/app/api/
-backend/app/workers/
-backend/app/services/
-packages/api/
-packages/store/
-apps/web/
-apps/mobile/
-Phase 7 notification engine
-Phase 8 telemetry
-Phase 9 ML
-Phase 10 XAI
-Phase 11 memory system
-
-Determine:
-
-- existing HTTP client
-- existing async infrastructure
-- existing Celery/background workers
-- existing WebSocket implementation
-- existing Firebase integration
-- existing Supabase integration
-- existing Deepgram integration
-- existing Groq integration
-- existing Gemini integration
-- existing local storage
-- existing audio recording implementation
-- existing error handling
-- existing logging system
-- existing environment configuration
-
-DO NOT introduce duplicate infrastructure if an existing implementation can be extended.
+[ ] Firestore compound indexing & query optimization
+[ ] Query batching & pagination
+[ ] Image & media asset optimization
+[ ] Route-based lazy loading & code splitting
+[ ] Background synchronization scheduling
+[ ] Local SQLite / MMKV caching for mobile
+[ ] Memory leak profiling & battery optimization
 
 ==================================================
-PART 1 — RESILIENCE ARCHITECTURE
+0. IMPORTANT PRINCIPLE
 ==================================================
 
-Implement a shared resilience layer.
-
-Architecture:
-
-Client
-   |
-   ▼
-Saarathi Backend
-   |
-   ▼
-Resilience Layer
-   |
-   ├── Retry
-   ├── Timeout
-   ├── Circuit Breaker
-   ├── Cache
-   ├── Provider Fallback
-   └── Offline Queue
-   |
-   ▼
-External Provider
-
-The resilience layer should be reusable.
-
-Do not implement separate inconsistent retry logic in every service.
-
-Create a shared abstraction where appropriate.
-
-==================================================
-PART 2 — EXPONENTIAL BACKOFF
-==================================================
-
-Implement exponential backoff with jitter.
-
-Base concept:
-
-delay = min(maxDelay, baseDelay * 2^attempt)
-
-Then apply jitter.
-
-Example:
-
-attempt 0
-   ↓
-small delay
-
-attempt 1
-   ↓
-larger delay
-
-attempt 2
-   ↓
-larger delay
-
-attempt 3
-   ↓
-maximum delay
-
-Use configurable values.
-
-Example configuration:
-
-MAX_RETRIES
-INITIAL_DELAY_MS
-MAX_DELAY_MS
-JITTER_RATIO
-
-Do not hardcode these throughout the codebase.
-
-==================================================
-PART 3 — RETRY ONLY TRANSIENT ERRORS
-==================================================
-
-Retry appropriate failures such as:
-
-- HTTP 429
-- HTTP 500
-- HTTP 502
-- HTTP 503
-- HTTP 504
-- connection reset
-- temporary DNS/network failure
-- provider timeout
-
-Do NOT retry blindly for:
-
-- HTTP 400
-- HTTP 401
-- HTTP 403
-- invalid API key
-- malformed request
-- invalid model
-- unsupported request
-- validation errors
-
-The system must distinguish transient from permanent failures.
-
-==================================================
-PART 4 — IDEMPOTENCY
-==================================================
-
-Retries can accidentally create duplicate operations.
-
-Implement idempotency for operations where duplication is harmful.
-
-Examples:
-
-- Brain Dump processing
-- task creation
-- reminder creation
-- audio processing
-- memory indexing
-- notification dispatch
-
-Use a deterministic request/job ID where appropriate.
-
-Example:
-
-userId + operationType + sourceId + operationVersion
-
-Before processing:
-
-check whether the operation has already completed.
-
-If yes:
-
-return the existing result.
-
-Do not process it twice.
-
-==================================================
-PART 5 — CIRCUIT BREAKERS
-==================================================
-
-Implement circuit breakers for external providers.
-
-Providers may include:
-
-Groq
-Gemini
-Deepgram
-Supabase
-Firebase
-other external AI providers
-
-Circuit states:
-
-CLOSED
-   ↓
-normal operation
-
-OPEN
-   ↓
-provider temporarily bypassed
-
-HALF_OPEN
-   ↓
-test provider recovery
-
-Example:
-
-Provider fails repeatedly
-       ↓
-Circuit opens
-       ↓
-Requests stop hitting provider
-       ↓
-Fallback provider is used
-       ↓
-Cooldown expires
-       ↓
-Half-open test request
-       ↓
-Success
-       ↓
-Circuit closes
-
-Do not continuously hammer an unavailable provider.
-
-==================================================
-PART 6 — CIRCUIT BREAKER CONFIGURATION
-==================================================
-
-Make configurable:
-
-failure threshold
-success threshold
-open duration
-half-open request count
-timeout
-
-Example conceptual configuration:
-
-CIRCUIT_FAILURE_THRESHOLD
-CIRCUIT_OPEN_DURATION
-CIRCUIT_HALF_OPEN_REQUESTS
-
-Do not expose internal circuit state to normal users.
-
-==================================================
-PART 7 — KAIRO LLM FALLBACK
-==================================================
-
-Existing:
-
-Groq → Gemini fallback
-
-Keep this architecture.
-
-Improve it to:
-
-Primary provider
-      ↓
-Timeout / rate limit / outage
-      ↓
-Retry transient error
-      ↓
-If still failing
-      ↓
-Circuit breaker
-      ↓
-Fallback provider
-      ↓
-Return response
-
-Do not automatically fallback on malformed requests.
-
-Example:
-
-Groq 429
-   ↓
-retry with backoff
-   ↓
-still failing
-   ↓
-Gemini
-
-Example:
-
-Groq 400 invalid request
-   ↓
-DO NOT retry
-   ↓
-return validation error
-
-==================================================
-PART 8 — PROVIDER HEALTH
-==================================================
-
-Create internal provider health information.
-
-Example:
-
-ProviderHealth:
-
-provider
-status
-failureCount
-successCount
-lastFailure
-lastSuccess
-circuitState
-latency
-lastErrorCategory
-
-Use this for internal diagnostics.
-
-Do not expose sensitive provider details to users.
-
-==================================================
-PART 9 — LLM RESPONSE CACHE
-==================================================
-
-Implement intelligent caching for safe, repeatable AI requests.
-
-Do NOT cache every Kairo response.
-
-Dynamic conversational responses may depend on:
-
-- current time
-- current tasks
-- energy level
-- memory context
+DO NOT optimize blindly.
+
+First inspect the existing implementation.
+
+Measure:
+
+- startup time
+- initial render
+- route load time
+- Firestore reads
+- Firestore query latency
+- network requests
+- bundle size
+- memory usage
+- unnecessary React renders
+- mobile battery usage
+- background work
+- AI request latency
+- WebSocket behavior
+- synchronization frequency
+
+Then optimize the actual bottlenecks.
+
+Do not introduce dependencies unless they solve a demonstrated problem.
+
+Do not break:
+
+- authentication
+- offline-first behavior
+- Firestore synchronization
+- notifications
+- Kairo
 - analytics
-- recent conversation
-- notification state
-
-Therefore cache only requests that are sufficiently deterministic.
-
-Potential candidates:
-
-- static productivity explanations
-- repeated general knowledge prompts
-- system-generated classification requests
-- repeated identical non-personal transformations
-
-Do not cache personalized responses unless the cache key includes all relevant context.
+- ML
+- long-term memory
+- security architecture
 
 ==================================================
-PART 10 — CACHE KEY
+1. PERFORMANCE BASELINE
 ==================================================
 
-Create deterministic cache keys.
+Before making major changes create:
 
-Concept:
+docs/Performance baseline.md
 
-hash(
- provider/model
- prompt
- systemPromptVersion
- relevantContext
- memoryContextVersion
- toolVersion
- locale
- featureVersion
-)
+Record the current state where measurable.
 
-If any meaningful context changes, the cache should not incorrectly return an old answer.
+Measure:
 
-==================================================
-PART 11 — CACHE TTL
-==================================================
+WEB
 
-Every cached result must have a TTL.
+- initial page load
+- time to interactive
+- JavaScript bundle size
+- largest chunks
+- route loading time
+- unnecessary network requests
 
-Example categories:
+MOBILE
 
-short-lived
-medium-lived
-long-lived
+- cold start
+- warm start
+- initial render
+- memory usage
+- JS thread responsiveness
+- background activity
 
-Make TTL configurable.
+BACKEND
 
-Do not create an infinite AI response cache.
-
-==================================================
-PART 12 — CACHE INVALIDATION
-==================================================
-
-Invalidate relevant cached data when:
-
-- user profile changes
-- task context changes
-- memory changes
-- AI system prompt changes
-- model changes
-- feature version changes
-
-Use versioned cache keys where practical rather than trying to manually invalidate every possible key.
-
-==================================================
-PART 13 — CACHE FAILURE SAFETY
-==================================================
-
-If cache storage is unavailable:
-
-Kairo must still work.
-
-Cache is an optimization.
-
-It must never become a dependency for basic AI functionality.
-
-==================================================
-PART 14 — DEEPGRAM STT RESILIENCE
-==================================================
-
-Implement:
-
-Deepgram
-   ↓
-timeout / transient failure
-   ↓
-retry with backoff
-   ↓
-failure
-   ↓
-fallback STT provider
-
-Preferred fallback:
-
-Whisper-compatible local/self-hosted implementation if practical.
-
-If the project cannot reasonably run Whisper locally on the target environment:
-
-create a provider abstraction so another compatible STT provider can be configured without changing the Kairo audio pipeline.
-
-Do not introduce a paid provider unnecessarily.
-
-==================================================
-PART 15 — STT PROVIDER ABSTRACTION
-==================================================
-
-Create an interface similar to:
-
-STTProvider
-
-transcribe(audio)
-isAvailable()
-getCapabilities()
-
-Implementation:
-
-DeepgramSTTProvider
-
-Fallback:
-
-WhisperSTTProvider
-
-Kairo should depend on the interface, not directly on Deepgram.
-
-==================================================
-PART 16 — AUDIO NORMALIZATION
-==================================================
-
-Before sending audio to STT:
-
-validate:
-
-- file exists
-- file type
-- duration
-- file size
-- supported codec
-
-Reject invalid audio cleanly.
-
-Do not repeatedly upload invalid files.
-
-==================================================
-PART 17 — OFFLINE AUDIO QUEUE
-==================================================
-
-Implement offline-first audio processing.
-
-Mobile flow:
-
-User records Brain Dump
-        ↓
-Audio saved locally
-        ↓
-Network unavailable
-        ↓
-Queue locally
-        ↓
-Show:
-"Saved — Kairo will process this when you're back online."
-        ↓
-Network returns
-        ↓
-Upload
-        ↓
-STT
-        ↓
-Groq/Gemini extraction
-        ↓
-Tasks generated
-        ↓
-Firestore sync
-
-The user's audio must not be lost because of temporary connectivity failure.
-
-==================================================
-PART 18 — AUDIO QUEUE MODEL
-==================================================
-
-Create a durable local queue.
-
-Concept:
-
-OfflineAudioJob:
-
-id
-userId
-localFilePath
-createdAt
-status
-retryCount
-lastAttemptAt
-nextAttemptAt
-errorCode
-errorMessage
-checksum
-remoteId
-
-Statuses:
-
-queued
-uploading
-uploaded
-processing
-completed
-failed
-retry_wait
-cancelled
-
-==================================================
-PART 19 — AUDIO DUPLICATE PREVENTION
-==================================================
-
-Calculate a checksum/hash for audio where practical.
-
-If the same audio is submitted twice:
-
-do not unnecessarily process it twice.
-
-Use:
-
-userId
-audioHash
-operationVersion
-
-as part of deduplication.
-
-==================================================
-PART 20 — RECONNECT PROCESSING
-==================================================
-
-When connectivity returns:
-
-process queued audio jobs.
-
-Do not upload all jobs simultaneously.
-
-Use controlled concurrency.
-
-Example:
-
-2–3 jobs at a time.
-
-Make concurrency configurable.
-
-==================================================
-PART 21 — MOBILE APP RESTART
-==================================================
-
-The queue must survive:
-
-- app closing
-- app restart
-- temporary crash
-- device reboot where platform storage permits
-
-Do NOT store only in memory.
-
-Use persistent local storage appropriate to the existing Expo architecture.
-
-==================================================
-PART 22 — BRAIN DUMP PIPELINE
-==================================================
-
-Final resilient architecture:
-
-Voice recording
-      ↓
-Local file
-      ↓
-Offline queue
-      ↓
-Upload
-      ↓
-Deepgram
-      ↓
-STT fallback
-      ↓
-Transcript
-      ↓
-Kairo extraction
-      ↓
-Groq
-      ↓
-Gemini fallback
-      ↓
-Task extraction
-      ↓
-Firestore
-      ↓
-Analytics telemetry
-      ↓
-Memory indexing
-
-A failure in one stage must not destroy successful earlier stages.
-
-For example:
-
-If task extraction fails after transcription succeeds:
-
-store the transcript.
-
-Allow retry from the failed stage.
-
-Do not force the user to record the audio again.
-
-==================================================
-PART 23 — CHECKPOINTING
-==================================================
-
-For multi-stage processing, persist intermediate state.
-
-Example:
-
-Audio
-   ↓
-Transcript saved
-   ↓
-Task extraction
-   ↓
-Tasks saved
-
-If task extraction fails:
-
-resume from transcript.
-
-Do not repeat Deepgram unnecessarily.
-
-==================================================
-PART 24 — NETWORK AWARENESS
-==================================================
-
-Implement network state detection on mobile and web where appropriate.
-
-States:
-
-online
-offline
-unstable
-
-Do not repeatedly attempt network calls while clearly offline.
-
-Queue them instead.
-
-==================================================
-PART 25 — FIREBASE RESILIENCE
-==================================================
-
-Inspect existing Firestore offline persistence.
-
-Ensure:
-
-- task mutations remain usable offline
-- optimistic UI remains responsive
-- synchronization occurs when connectivity returns
-- duplicate mutations are avoided
-
-Do not replace Firestore's native offline mechanism unnecessarily.
-
-Maintain the existing server timestamp strategy from earlier phases.
-
-==================================================
-PART 26 — SUPABASE RESILIENCE
-==================================================
-
-Supabase is used by Phase 11 for long-term memory.
-
-If Supabase is temporarily unavailable:
-
-- Firestore operations continue
-- memory indexing is queued
-- retries occur later
-- Kairo can operate without long-term memory temporarily
-
-Memory indexing must be eventually consistent.
-
-==================================================
-PART 27 — WEBSOCKET RESILIENCE
-==================================================
-
-Kairo uses WebSockets for streaming.
-
-Implement:
-
-connection timeout
-heartbeat
-automatic reconnect
-exponential reconnect delay
-maximum reconnect attempts
-connection state
-
-States:
-
-connecting
-connected
-reconnecting
-disconnected
-
-If the WebSocket fails:
-
-attempt reconnect.
-
-If streaming cannot be restored:
-
-fall back to a normal request/response endpoint where possible.
-
-==================================================
-PART 28 — STREAM INTERRUPTION
-==================================================
-
-If Kairo streaming is interrupted halfway:
-
-Do not lose the user request.
-
-Client should be able to:
-
-- reconnect
-- resume where supported
-- or retry the request safely
-
-Use request IDs.
-
-Avoid duplicate AI responses.
-
-==================================================
-PART 29 — TIMEOUTS
-==================================================
-
-Every external operation must have a timeout.
-
-Examples:
-
-LLM request
-STT request
-embedding request
-database request
-HTTP request
-WebSocket handshake
-
-Do not allow a request to hang indefinitely.
-
-Use separate configurable timeout values by operation.
-
-==================================================
-PART 30 — ERROR CLASSIFICATION
-==================================================
-
-Create normalized internal error categories.
-
-Example:
-
-TRANSIENT_NETWORK
-RATE_LIMITED
-PROVIDER_TIMEOUT
-PROVIDER_UNAVAILABLE
-AUTHENTICATION_ERROR
-INVALID_REQUEST
-VALIDATION_ERROR
-DATABASE_UNAVAILABLE
-UNKNOWN
-
-Do not expose raw provider stack traces to users.
-
-==================================================
-PART 31 — USER-FACING ERROR MESSAGES
-==================================================
-
-Convert internal errors into clear messages.
-
-Bad:
-
-"HTTP 503 aiohttp.ClientResponseError..."
-
-Good:
-
-"Kairo is temporarily having trouble reaching its AI service. Your request is safe — please try again."
-
-For offline audio:
-
-"Saved locally. Kairo will process your voice note when your connection returns."
-
-For memory:
-
-"I couldn't access your long-term memory right now, but Kairo is still available."
-
-==================================================
-PART 32 — TELEMETRY
-==================================================
-
-Integrate resilience events with the existing Phase 8 telemetry system.
-
-Track:
-
-provider_request
-provider_success
-provider_failure
-provider_timeout
-provider_rate_limit
-retry_started
-retry_exhausted
-circuit_opened
-circuit_half_open
-circuit_closed
-fallback_used
-cache_hit
-cache_miss
-audio_queued
-audio_retry
-audio_completed
-audio_failed
-websocket_reconnect
-offline_operation_queued
-
-Do NOT record sensitive prompt/audio content unnecessarily.
-
-==================================================
-PART 33 — ANALYTICS
-==================================================
-
-Expose aggregated reliability metrics internally:
-
-Provider success rate
-Provider failure rate
-Fallback rate
-Average latency
-P95 latency
-Retry rate
-Cache hit rate
-Circuit-open duration
-Audio processing success rate
-Offline queue completion rate
-
-Use these metrics to identify reliability problems.
-
-==================================================
-PART 34 — RATE LIMIT PROTECTION
-==================================================
-
-Prevent Saarathi itself from unnecessarily hammering external providers.
-
-Implement:
-
-request throttling
-concurrency limits
-provider-specific limits
-
-Respect provider responses such as:
-
-HTTP 429
-Retry-After
-
-When available, use the provider's retry timing rather than blindly choosing a delay.
-
-==================================================
-PART 35 — BACKPRESSURE
-==================================================
-
-If many Brain Dumps are queued:
-
-Do not process unlimited jobs simultaneously.
-
-Use bounded concurrency.
-
-Example:
-
-Queue:
-100 jobs
-
-Workers:
-3
-
-Process gradually.
-
-Do not create 100 simultaneous API calls.
-
-==================================================
-PART 36 — PRIORITY QUEUES
-==================================================
-
-If useful, prioritize:
-
-HIGH:
-interactive Kairo request
-
-MEDIUM:
-Brain Dump
-
-LOW:
-historical memory indexing
-
-A user's current interaction should not be blocked by background memory indexing.
-
-==================================================
-PART 37 — GRACEFUL DEGRADATION
-==================================================
-
-Define explicit degradation levels.
-
-LEVEL 0:
-Everything healthy.
-
-LEVEL 1:
-Primary provider degraded.
-Use fallback.
-
-LEVEL 2:
-AI provider unavailable.
-Basic task management continues.
-
-LEVEL 3:
-Memory unavailable.
-Kairo operates without long-term context.
-
-LEVEL 4:
-Network unavailable.
-Local/offline functionality continues.
-
-The Todo application should remain usable even when AI is completely unavailable.
-
-==================================================
-PART 38 — NEVER BREAK CORE TODO FEATURES
-==================================================
-
-These features must continue independently of AI:
-
-- create task
-- edit task
-- complete task
-- delete task
-- view tasks
-- reminders
-- local notifications
-- offline task operations
-
-AI is an enhancement, not a dependency.
-
-==================================================
-PART 39 — TESTING
-==================================================
-
-Create unit and integration tests.
-
-Test:
-
-RETRY
-
-- retry on 429
-- retry on 500
-- retry on timeout
-- no retry on 400
-- no retry on 401
-- exponential delay
-- jitter
-- maximum retries
-
-CIRCUIT BREAKER
-
-- closed state
-- threshold
-- open state
-- half-open state
-- recovery
-- repeated failure
-
-FALLBACK
-
-- Groq → Gemini
-- Deepgram → Whisper/fallback
-- provider recovery
-
-CACHE
-
-- cache hit
-- cache miss
-- TTL
-- invalidation
-- context-aware key
-- cache failure
-
-OFFLINE AUDIO
-
-- queue while offline
-- persist queue
-- reconnect
-- retry
-- duplicate prevention
-- app restart
-- failed processing
-- checkpoint resume
-
-WEBSOCKET
-
-- reconnect
-- timeout
-- stream interruption
-- duplicate prevention
+- average API latency
+- p95 latency where possible
+- Firestore query latency
+- Supabase query latency
+- AI request latency
+- WebSocket connection time
 
 DATABASE
 
-- Firestore unavailable
-- Supabase unavailable
-- eventual retry
+- number of Firestore reads
+- query patterns
+- pagination behavior
+- indexes
+- repeated queries
 
-SECURITY
+Do not invent measurements.
 
-- user isolation
-- no secret exposure
-- no unauthorized job access
+If a metric cannot be measured reliably, explicitly state:
 
-==================================================
-PART 40 — CHAOS / FAILURE TESTING
-==================================================
-
-Simulate:
-
-Groq unavailable
-Gemini unavailable
-Deepgram unavailable
-Supabase unavailable
-Firebase unavailable
-network offline
-network restored
-429 responses
-500 responses
-timeouts
-WebSocket disconnect
-app restart during upload
-app restart during processing
-
-Expected result:
-
-Saarathi should degrade gracefully rather than crash.
+"Not currently measurable."
 
 ==================================================
-PART 41 — ACCEPTANCE CRITERIA
+2. FIRESTORE QUERY AUDIT
 ==================================================
 
-Phase 12 is complete only when:
+Inspect every Firestore query.
 
-- [x] Groq → Gemini fallback remains functional
-- [ ] Exponential backoff implemented
-- [ ] Jitter implemented
-- [ ] Retry classification implemented
-- [ ] Circuit breaker implemented
-- [ ] Provider health tracking implemented
-- [ ] Intelligent AI caching implemented
-- [ ] Cache invalidation implemented
-- [ ] Deepgram provider abstraction implemented
-- [ ] Whisper/fallback STT implemented or pluggable
-- [ ] Offline audio queue implemented
-- [ ] Persistent audio queue implemented
-- [ ] Audio retry implemented
-- [ ] Audio checkpointing implemented
-- [ ] Duplicate audio processing prevented
-- [ ] WebSocket reconnect implemented
-- [ ] Streaming interruption handled
-- [ ] Request timeouts implemented
-- [ ] Error classification implemented
-- [ ] Graceful degradation implemented
-- [ ] Phase 8 resilience telemetry integrated
-- [ ] Firestore offline behavior verified
-- [ ] Supabase memory indexing can recover from failure
-- [ ] Core Todo functionality works without AI
-- [ ] Automated tests pass
+Identify:
+
+- full collection reads
+- missing filters
+- unnecessary orderBy
+- repeated identical queries
+- queries triggered on every render
+- queries triggered unnecessarily on navigation
+- listeners that remain active too long
+- listeners that can be scoped more narrowly
+
+Prefer:
+
+specific document reads
++
+filtered queries
++
+limited results
++
+pagination
+
+Avoid:
+
+loading an entire user's historical dataset into memory.
 
 ==================================================
-PART 42 — VALIDATION
+3. FIRESTORE COMPOUND INDEXES
 ==================================================
+
+Inspect existing Firestore queries and determine required composite indexes.
+
+Do not create arbitrary indexes.
+
+Only add indexes required by actual query patterns.
+
+Review important collections such as:
+
+tasks
+reminders
+notifications
+telemetry
+analytics
+chat
+memory metadata
+
+depending on the actual implementation.
+
+Create/update:
+
+firestore.indexes.json
+
+where appropriate.
+
+Document why each important index exists.
+
+==================================================
+4. FIRESTORE QUERY OPTIMIZATION
+==================================================
+
+Optimize common Saarathi flows.
+
+Examples:
+
+Today's tasks
+Upcoming tasks
+Overdue tasks
+Reminders
+Notifications
+Analytics
+Telemetry
+Kairo context
+Memory retrieval
+
+Do not fetch:
+
+all historical tasks
+
+when only today's tasks are required.
+
+Use:
+
+where()
+orderBy()
+limit()
+startAfter()
+
+where appropriate.
+
+==================================================
+5. PAGINATION
+==================================================
+
+Implement pagination for potentially large datasets.
+
+Priority:
+
+- notifications
+- telemetry
+- chat history
+- long-term memories
+- analytics history
+- completed tasks
+- historical reminders
+
+Use cursor-based pagination where appropriate.
+
+Avoid offset-based pagination when Firestore cursor pagination is available.
+
+Example:
+
+first page
+   ↓
+limit(N)
+   ↓
+last document
+   ↓
+startAfter(lastDocument)
+   ↓
+next page
+
+==================================================
+6. QUERY BATCHING
+==================================================
+
+Identify sequential requests that can safely be combined.
+
+Avoid:
+
+request A
+wait
+request B
+wait
+request C
+
+when the requests are independent.
+
+Use:
+
+Promise.all()
+
+or appropriate batched database operations.
+
+Do not combine requests if doing so increases payload size unnecessarily.
+
+==================================================
+7. FIRESTORE WRITE BATCHING
+==================================================
+
+Where multiple independent Firestore writes occur together:
+
+use batched writes or transactions when appropriate.
+
+Do NOT use transactions merely for performance.
+
+Use transactions only where atomic read-modify-write behavior is required.
+
+Ensure offline-first behavior continues to work.
+
+==================================================
+8. REAL-TIME LISTENER OPTIMIZATION
+==================================================
+
+Audit all onSnapshot listeners.
+
+For every listener determine:
+
+- Why does it exist?
+- What collection does it watch?
+- Is it user-scoped?
+- Is the query filtered?
+- Is it mounted only while needed?
+- Is it unsubscribed correctly?
+
+Prevent:
+
+duplicate listeners
+nested listeners
+listeners created on every render
+listeners surviving navigation unnecessarily
+
+Ensure cleanup:
+
+useEffect()
+   ↓
+subscribe
+   ↓
+return unsubscribe
+
+==================================================
+9. ZUSTAND OPTIMIZATION
+==================================================
+
+Audit Zustand stores.
+
+Avoid subscribing components to the entire store when they only need a small field.
+
+Prefer selective subscriptions.
+
+Bad:
+
+useTaskStore()
+
+when a component only needs:
+
+tasks
+
+Better:
+
+useTaskStore(state => state.tasks)
+
+where appropriate.
+
+Review:
+
+useTaskStore
+useNotificationStore
+analytics stores
+AI/Kairo state
+authentication state
+
+Do not rewrite working stores unnecessarily.
+
+==================================================
+10. REACT RENDER OPTIMIZATION
+==================================================
+
+Identify unnecessary renders.
+
+Inspect:
+
+- large task lists
+- analytics graphs
+- notification lists
+- chat messages
+- memory results
+- dashboard components
+
+Use memoization only when profiling demonstrates value.
+
+Potential tools:
+
+React.memo
+useMemo
+useCallback
+
+Do not add memoization everywhere.
+
+Avoid premature optimization.
+
+==================================================
+11. LARGE LIST OPTIMIZATION
+==================================================
+
+For mobile and web lists:
+
+avoid rendering hundreds/thousands of items simultaneously.
+
+Use appropriate virtualization.
+
+React Native:
+
+FlatList
+SectionList
+
+where appropriate.
+
+Review:
+
+task lists
+notifications
+chat history
+analytics event lists
+memory results
+
+Ensure stable keys.
+
+Avoid:
+
+array index
+
+as key when stable IDs exist.
+
+==================================================
+12. WEB ROUTE-BASED LAZY LOADING
+==================================================
+
+Implement route-level lazy loading for large views.
+
+Potential candidates:
+
+Analytics
+Kairo
+Notifications
+Profile
+Memory
+Settings
+Admin
+other large views
+
+Use dynamic imports / React.lazy where compatible.
+
+Architecture:
+
+Initial bundle
+   ↓
+Core dashboard
+   ↓
+Load feature only when required
+
+Do not lazy-load tiny components where it creates unnecessary complexity.
+
+==================================================
+13. CODE SPLITTING
+==================================================
+
+Analyze the production bundle.
+
+Identify large dependencies.
+
+Do not remove functionality merely to reduce bundle size.
+
+Prefer:
+
+dynamic imports
+tree-shaking
+feature isolation
+
+Ensure the initial bundle contains only what is needed for the first screen.
+
+==================================================
+14. ASSET OPTIMIZATION
+==================================================
+
+Audit:
+
+logos
+icons
+AI images
+avatars
+illustrations
+audio
+uploaded media
+
+Use modern formats where appropriate.
+
+Images should not be larger than necessary.
+
+Avoid shipping huge images for small UI components.
+
+Do not optimize away visual quality unnecessarily.
+
+==================================================
+15. IMAGE LOADING
+==================================================
+
+Implement where appropriate:
+
+lazy loading
+responsive sizing
+proper dimensions
+caching
+
+Avoid layout shifts by providing known dimensions.
+
+For mobile:
+
+use appropriate image caching.
+
+Do not introduce an external paid image CDN.
+
+Keep the architecture free-first.
+
+==================================================
+16. AUDIO OPTIMIZATION
+==================================================
+
+Saarathi uses:
+
+Deepgram
+Whisper fallback
+voice notes
+brain dumps
+Kairo voice interaction
+
+Review audio pipeline.
+
+Avoid uploading unnecessarily large audio files.
+
+Where appropriate:
+
+compress audio
+use suitable formats
+stream when useful
+delete temporary files after processing
+
+Do not reduce audio quality below what STT requires without testing accuracy.
+
+==================================================
+17. BRAIN DUMP PERFORMANCE
+==================================================
+
+Existing architecture:
+
+User records audio
+      ↓
+Upload
+      ↓
+STT
+      ↓
+LLM extraction
+      ↓
+Tasks
+
+Do not block the UI while processing.
+
+Frontend should immediately show:
+
+"Kairo is processing your brain dump..."
+
+Then process asynchronously.
+
+Existing Phase 12 resilience mechanisms must remain compatible.
+
+==================================================
+18. KAIRO RESPONSE LATENCY
+==================================================
+
+Kairo uses WebSockets.
+
+Optimize:
+
+connection establishment
+authentication
+message serialization
+context retrieval
+LLM calls
+streaming
+memory retrieval
+
+Target:
+
+time-to-first-token should be much lower than full-response latency.
+
+Do not wait for the entire LLM response before displaying streamed output.
+
+==================================================
+19. KAIRO CONTEXT SIZE
+==================================================
+
+Do not send Kairo the entire user's history.
+
+Use:
+
+relevant task context
++
+relevant memory
++
+current conversation
++
+necessary user preferences
+
+Phase 11 vector retrieval should return only relevant results.
+
+Limit context size.
+
+This improves:
+
+latency
+cost
+memory
+model quality
+
+==================================================
+20. AI REQUEST DEDUPLICATION
+==================================================
+
+Prevent accidental duplicate AI requests.
+
+Examples:
+
+user double taps
+network retries
+component remount
+WebSocket reconnect
+
+Use request IDs or idempotency where appropriate.
+
+Do not execute the same expensive operation twice unnecessarily.
+
+==================================================
+21. AI RESPONSE CACHING
+==================================================
+
+Do not blindly cache personalized AI responses.
+
+Only cache when the request is deterministic and safe to reuse.
+
+Potential examples:
+
+static system information
+non-personal configuration
+repeated identical non-sensitive requests
+
+Do NOT cache personalized Kairo responses globally.
+
+Never allow User A to receive User B's cached response.
+
+Coordinate this with Phase 12 caching.
+
+==================================================
+22. BACKGROUND SYNCHRONIZATION
+==================================================
+
+Optimize offline-first synchronization.
+
+Current architecture:
+
+local state
+   ↓
+Firestore offline persistence
+   ↓
+server synchronization
+
+Do not continuously poll Firestore.
+
+Prefer:
+
+real-time listeners
++
+event-driven synchronization
++
+controlled background refresh
+
+Avoid unnecessary background work.
+
+==================================================
+23. MOBILE BACKGROUND TASKS
+==================================================
+
+Inspect Expo background capabilities.
+
+Schedule background work only when necessary.
+
+Potential background tasks:
+
+- synchronization
+- reminder reconciliation
+- offline queue processing
+
+Do not create a continuously running background process.
+
+Battery usage is a first-class requirement.
+
+==================================================
+24. LOCAL MOBILE CACHE
+==================================================
+
+Evaluate:
+
+SQLite
+MMKV
+
+Do not automatically introduce both.
+
+Choose based on actual data requirements.
+
+Use a local database/cache for data that benefits from fast local access.
+
+Potential candidates:
+
+recent tasks
+task metadata
+cached analytics
+notification state
+offline queue
+Kairo conversation cache
+
+Do not duplicate Firestore persistence unnecessarily.
+
+==================================================
+25. CACHE OWNERSHIP
+==================================================
+
+Clearly define:
+
+Firestore = source of truth for cloud data
+
+Local cache = performance/offline layer
+
+Zustand = UI/application state
+
+React Query = server-state cache where already used
+
+Avoid having:
+
+Firestore
++
+SQLite
++
+Zustand
++
+React Query
+
+all independently acting as competing sources of truth.
+
+Document synchronization rules.
+
+==================================================
+26. CACHE INVALIDATION
+==================================================
+
+Define clear invalidation rules.
+
+When a task changes:
+
+local state
+   ↓
+optimistic update
+   ↓
+Firestore
+   ↓
+listener reconciliation
+   ↓
+cache update
+
+Prevent stale cached tasks from remaining indefinitely.
+
+==================================================
+27. OFFLINE-FIRST PERFORMANCE
+==================================================
+
+Offline operations should feel immediate.
+
+Example:
+
+User taps:
+
+Complete Task
+
+UI:
+
+immediately marks complete.
+
+Then:
+
+local persistence
+      ↓
+Firestore sync
+      ↓
+server reconciliation
+
+Do not make the UI wait for the network.
+
+Maintain deterministic conflict handling already established.
+
+==================================================
+28. MEMORY LEAK AUDIT
+==================================================
+
+Inspect:
+
+useEffect
+subscriptions
+WebSockets
+timers
+setInterval
+setTimeout
+Firestore listeners
+event listeners
+audio recording
+audio playback
+navigation listeners
+
+Every resource must have cleanup.
+
+Look specifically for:
+
+- WebSocket connections surviving navigation
+- duplicate Firestore listeners
+- timers surviving unmount
+- audio resources not released
+- event listeners added repeatedly
+
+==================================================
+29. WEB MEMORY PROFILING
+==================================================
+
+Use browser profiling tools where possible.
+
+Inspect:
+
+heap growth
+detached DOM nodes
+long tasks
+excessive listeners
+
+Do not claim a memory leak exists unless verified.
+
+Record findings in:
+
+docs/Performance baseline.md
+
+==================================================
+30. MOBILE MEMORY PROFILING
+==================================================
+
+Inspect:
+
+large arrays
+large task datasets
+chat history
+audio buffers
+analytics data
+image caches
+
+Do not keep entire historical datasets in React state.
+
+Load only what the screen needs.
+
+==================================================
+31. BATTERY OPTIMIZATION
+==================================================
+
+Minimize:
+
+background network calls
+GPS/location usage if any
+timers
+polling
+audio processing
+continuous WebSocket reconnections
+
+Use event-driven behavior wherever possible.
+
+Notifications should be scheduled by the appropriate platform mechanism rather than a constantly running JS timer.
+
+==================================================
+32. NOTIFICATION PERFORMANCE
+==================================================
+
+Review Phase 7.
+
+Avoid:
+
+polling every second
+recreating all reminders unnecessarily
+rescheduling unchanged notifications
+
+When a task changes:
+
+only reconcile affected reminder(s).
+
+Do not rebuild the entire notification schedule for every task mutation.
+
+==================================================
+33. ANALYTICS PERFORMANCE
+==================================================
+
+Phase 8 analytics must not process massive datasets on every screen render.
+
+Avoid:
+
+fetch entire telemetry history
+then calculate everything on the client
+
+Prefer:
+
+aggregated metrics
+precomputed summaries
+bounded date ranges
+server-side aggregation where appropriate
+
+Examples:
+
+today
+last 7 days
+last 30 days
+
+rather than entire lifetime history.
+
+==================================================
+34. GRAPH PERFORMANCE
+==================================================
+
+Analytics graphs should receive only the data points required.
+
+Do not render thousands of points when the graph visually requires only hundreds.
+
+Aggregate when necessary.
+
+Ensure graph rendering does not block task interactions.
+
+==================================================
+35. ML PERFORMANCE
+==================================================
+
+Phase 9 behavioral ML should not execute expensive inference on every render.
+
+Only run prediction when:
+
+relevant input changes
+or
+a prediction becomes stale.
+
+Cache appropriate model outputs.
+
+Do not repeatedly recompute the same prediction.
+
+==================================================
+36. XAI PERFORMANCE
+==================================================
+
+Phase 10 explanations should not significantly slow normal task interactions.
+
+Only calculate detailed explanation data when:
+
+a prediction is generated
+or
+the user requests an explanation.
+
+Do not calculate SHAP/explainability for every task on every dashboard render.
+
+==================================================
+37. LONG-TERM MEMORY PERFORMANCE
+==================================================
+
+Phase 11 vector search should be bounded.
+
+Use:
+
+top-K retrieval
+metadata filters
+user ID filtering
+reasonable embedding search limits
+
+Do not retrieve the entire vector database.
+
+Hybrid search should combine:
+
+semantic similarity
++
+keyword/full-text relevance
+
+without unnecessarily duplicating expensive queries.
+
+==================================================
+38. API RESPONSE SIZE
+==================================================
+
+Review API responses.
+
+Avoid sending unnecessary fields.
+
+Use response models.
+
+For lists:
+
+return only required fields.
+
+Avoid:
+
+entire user objects
+entire task histories
+large nested structures
+
+when the UI needs only a subset.
+
+==================================================
+39. PAGINATED API DESIGN
+==================================================
+
+For large backend responses use:
+
+limit
+cursor
+hasMore
+
+or equivalent.
+
+Example:
+
+{
+  "items": [...],
+  "nextCursor": "...",
+  "hasMore": true
+}
+
+Do not return unbounded arrays.
+
+==================================================
+40. NETWORK OPTIMIZATION
+==================================================
+
+Identify duplicate requests.
+
+Use:
+
+request deduplication
+caching
+parallel requests
+conditional fetching
+
+where appropriate.
+
+Do not create aggressive polling.
+
+==================================================
+41. PREFETCHING
+==================================================
+
+Use cautious prefetching for predictable navigation.
+
+Example:
+
+When dashboard opens, it may be reasonable to prepare:
+
+Analytics summary
+Notifications count
+
+if profiling shows value.
+
+Do not prefetch large datasets that users may never open.
+
+==================================================
+42. PERFORMANCE BUDGETS
+==================================================
+
+Establish practical targets.
+
+WEB:
+
+- fast initial dashboard rendering
+- minimal initial JS
+- no unnecessary blocking requests
+
+MOBILE:
+
+- responsive interactions
+- low memory overhead
+- minimal background work
+
+API:
+
+- fast normal CRUD responses
+- streaming AI responses
+- bounded database queries
+
+Do not fabricate exact benchmarks.
+
+Record actual measured values.
+
+==================================================
+43. REGRESSION TESTING
+==================================================
+
+After optimization verify:
+
+Authentication
+Tasks
+Task completion
+Task creation
+Task editing
+Reminders
+Notifications
+Offline mode
+Online synchronization
+Conflict resolution
+Kairo
+Brain Dump
+STT
+TTS
+Analytics
+ML predictions
+XAI
+Long-term memory
+WebSockets
+
+Nothing should regress.
+
+==================================================
+44. PERFORMANCE TESTS
+==================================================
+
+Create tests for:
+
+pagination
+query limits
+cache invalidation
+listener cleanup
+duplicate request prevention
+notification scheduling efficiency
+offline synchronization
+WebSocket cleanup
+large task lists
+large notification lists
+
+Where possible test:
+
+100
+1,000
+10,000
+
+records.
+
+Do not load all records into memory if the architecture should paginate them.
+
+==================================================
+45. SECURITY COMPATIBILITY
+==================================================
+
+Do NOT sacrifice Phase 14 security for performance.
+
+Never:
+
+disable authorization
+weaken Firestore rules
+remove RLS
+expose secrets
+skip JWT verification
+allow global vector searches
+cache private responses globally
+
+Performance improvements must preserve security boundaries.
+
+==================================================
+46. FREE-FIRST ARCHITECTURE
+==================================================
+
+Saarathi is intentionally being built with a $0/free-first architecture.
+
+Do not introduce paid infrastructure simply for optimization.
+
+Avoid unnecessary:
+
+CDNs
+paid caching services
+paid monitoring
+paid databases
+paid queues
+
+Prefer existing:
+
+Firebase
+Supabase free tier
+browser APIs
+Expo
+local storage
+SQLite/MMKV where justified
+FastAPI
+WebSockets
+
+If a production-scale optimization eventually requires paid infrastructure, document it as a future scaling option rather than making it mandatory now.
+
+==================================================
+47. DOCUMENT ARCHITECTURE
+==================================================
+
+Create/update:
+
+docs/Performance architecture.md
+
+Document:
+
+- Firestore query strategy
+- pagination
+- caching
+- Zustand state
+- React Query usage
+- local mobile storage
+- offline synchronization
+- WebSocket lifecycle
+- AI streaming
+- background synchronization
+- analytics aggregation
+- ML inference caching
+- memory search limits
+
+==================================================
+48. FINAL PERFORMANCE AUDIT
+==================================================
+
+Before declaring completion answer:
+
+1. What was slow?
+2. What changed?
+3. Why was each change necessary?
+4. What measurements improved?
+5. What did not improve?
+6. What trade-offs were introduced?
+7. What remains a bottleneck?
+
+Do not claim:
+
+"sub-second"
+
+unless it was actually measured.
+
+==================================================
+49. REQUIRED FINAL REPORT
+==================================================
+
+After implementation provide:
+
+### 1. Baseline
+
+Measured performance before optimization.
+
+### 2. Firestore
+
+- indexes
+- query improvements
+- pagination
+- listener optimization
+
+### 3. Frontend
+
+- lazy loading
+- code splitting
+- rendering optimization
+- bundle changes
+
+### 4. Mobile
+
+- local cache
+- memory
+- battery
+- background synchronization
+
+### 5. Backend
+
+- API latency
+- batching
+- caching
+- WebSocket optimization
+
+### 6. AI
+
+- Kairo latency
+- streaming
+- context optimization
+- request deduplication
+- caching
+
+### 7. Analytics/ML
+
+- aggregation
+- prediction caching
+- graph optimization
+
+### 8. Memory
+
+- long-term memory retrieval optimization
+
+### 9. Tests
+
+Provide exact results.
+
+### 10. Build
 
 Run:
 
@@ -1153,168 +1327,79 @@ npm run lint:types
 npm test
 npm run build
 
-Also run:
+Backend:
 
-backend tests
-integration tests
-database tests
+pytest
 
-Verify:
+### 11. Regression
 
-0 TypeScript errors
-0 production build errors
-0 critical backend errors
-0 security failures
-0 failing resilience tests
+Confirm existing Saarathi functionality remains operational.
 
-Perform manual end-to-end tests.
+### 12. Remaining bottlenecks
 
-TEST 1:
-
-Turn off network.
-
-Create task.
-
-Expected:
-
-Task remains usable locally.
-
-TEST 2:
-
-Turn off network.
-
-Record Brain Dump.
-
-Expected:
-
-Audio is saved locally and queued.
-
-TEST 3:
-
-Restore network.
-
-Expected:
-
-Audio uploads automatically.
-
-TEST 4:
-
-Simulate Deepgram failure.
-
-Expected:
-
-Fallback STT is attempted.
-
-TEST 5:
-
-Simulate Groq 429.
-
-Expected:
-
-Retry occurs with exponential backoff.
-
-Then:
-
-Gemini fallback.
-
-TEST 6:
-
-Simulate repeated Groq failures.
-
-Expected:
-
-Circuit breaker opens.
-
-TEST 7:
-
-Restore Groq.
-
-Expected:
-
-Half-open recovery test succeeds.
-
-Circuit closes.
-
-TEST 8:
-
-Disconnect Kairo WebSocket.
-
-Expected:
-
-Automatic reconnect.
-
-TEST 9:
-
-Disable Supabase.
-
-Expected:
-
-Core Todo functionality continues.
-
-Memory indexing retries later.
-
-TEST 10:
-
-Attempt User A memory search using User B identity.
-
-Expected:
-
-Zero results/access denied.
+Be honest.
 
 ==================================================
-PART 43 — FINAL IMPLEMENTATION REPORT
+50. DEFINITION OF DONE
 ==================================================
 
-After implementation provide:
+Phase 13 can be marked complete only when:
 
-1. Files created
-2. Files modified
-3. Existing architecture reused
-4. Retry architecture
-5. Circuit breaker architecture
-6. Provider fallback architecture
-7. Cache architecture
-8. Deepgram/Whisper architecture
-9. Offline audio queue architecture
-10. WebSocket resilience
-11. Error classification
-12. Graceful degradation strategy
-13. Telemetry integration
-14. Environment variables
-15. Database/schema changes
-16. Tests performed
-17. Failure simulations performed
-18. Build results
-19. Known platform limitations
-20. Remaining Phase 12 work, if any
-21. Readiness for Phase 13
-
-DO NOT claim Phase 12 is complete unless the acceptance criteria have actually been tested.
+[x] Monorepo bundle isolation
+[ ] Firestore indexes optimized
+[ ] Firestore queries optimized
+[ ] Pagination implemented where required
+[ ] Query batching implemented where beneficial
+[ ] Real-time listeners audited
+[ ] Image assets optimized
+[ ] Audio pipeline optimized
+[ ] Route-based lazy loading
+[ ] Code splitting
+[ ] Background synchronization optimized
+[ ] Mobile cache strategy implemented
+[ ] Memory leaks audited
+[ ] Battery usage reviewed
+[ ] Kairo latency optimized
+[ ] WebSocket lifecycle optimized
+[ ] Analytics processing optimized
+[ ] ML inference optimized
+[ ] Long-term memory retrieval optimized
+[ ] Performance tests
+[ ] Regression tests
+[ ] Documentation updated
+[ ] Production build passes
 
 ==================================================
-FINAL DESIGN PRINCIPLE
+FINAL RULE
 ==================================================
 
-Saarathi should follow:
+Optimize Saarathi based on evidence.
 
-FAILURE
-   ↓
-CLASSIFY
-   ↓
-RETRY IF TRANSIENT
-   ↓
-CIRCUIT BREAK IF PERSISTENT
-   ↓
-FALLBACK
-   ↓
-QUEUE IF OFFLINE
-   ↓
-RECOVER
-   ↓
-RESUME
+DO NOT:
 
-And most importantly:
+- rewrite stable architecture unnecessarily
+- add dependencies without justification
+- add caching everywhere
+- create unnecessary indexes
+- load entire datasets
+- introduce continuous polling
+- keep unnecessary listeners alive
+- sacrifice security
+- sacrifice offline-first behavior
+- introduce paid services unnecessarily
 
-AI FAILURE ≠ SAARATHI FAILURE
+The goal is:
 
-The core productivity application must remain usable even when every external AI provider is unavailable.
+FAST
++
+RESPONSIVE
++
+LOW RESOURCE USAGE
++
+OFFLINE FRIENDLY
++
+SECURE
++
+FREE-FIRST
+
+while preserving all existing Saarathi functionality.

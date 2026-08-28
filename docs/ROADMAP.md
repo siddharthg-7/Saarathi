@@ -25,7 +25,7 @@
 | **Phase 11** | Long-Term Memory (Vector & Hybrid Search) | ✅ Completed | `2026-08-25` |
 | **Phase 12** | Resilience & Reliability (Circuit Breakers) | ✅ Completed | `2026-08-27` |
 | **Phase 13** | Performance Optimization | ⏳ In Progress | — |
-| **Phase 14** | Security & Compliance | ⏳ In Progress | — |
+| **Phase 14** | Security & Compliance | ✅ Completed | `2026-08-28` |
 | **Phase 15** | Testing & Quality Assurance | ⏳ In Progress | — |
 | **Phase 16** | Production Deployment & DevOps | ⏳ In Progress | — |
 
@@ -505,20 +505,22 @@ Degradation Level 2       Local Checkpoint
 
 ---
 
-## Phase 14 — Security
-**Objective:** Enterprise-grade security and user privacy.  
-**Status:** ⏳ In Progress
+## Phase 14 — Security & Privacy Hardening
+**Objective:** Enterprise-grade security, user data isolation, cryptographic JWT validation, and RBAC.  
+**Status:** ✅ Completed (`2026-08-28`)  
 
 ### Deliverables
 - [x] Security architecture document (`docs/Security model.md`) — `2026-08-03`
-- [x] Firebase Authentication middleware in FastAPI (`auth.py`) — `2026-08-04`
-- [ ] Production Firebase Security Rules for Firestore & Storage
-- [ ] Role-Based Access Control (RBAC)
-- [ ] API authentication & strict JWT validation
-- [ ] Encrypted local storage on mobile (SecureStore / Keytar)
-- [ ] Strict environment variable validation
-- [ ] Input sanitization & Rate limiting (Redis Token Bucket)
-- [ ] Audit logging for sensitive mutations
+- [x] Firebase Authentication middleware in FastAPI (`auth.py` / `security.py`) — `2026-08-04`
+- [x] Production Firebase Security Rules for Firestore & Storage (`firestore.rules`, `storage.rules`) — `2026-08-28`
+- [x] Role-Based Access Control (`require_admin`, admin check endpoints) — `2026-08-28`
+- [x] API authentication & strict cryptographic JWT validation — `2026-08-28`
+- [x] Encrypted local storage on mobile (`secureStorage.ts`) — `2026-08-28`
+- [x] Strict environment variable validation & secret registry (`config.py`) — `2026-08-28`
+- [x] Input sanitization, security headers & Token-Bucket Rate limiting (`rate_limiter.py`) — `2026-08-28`
+- [x] Immutable security audit logging for sensitive mutations (`audit.py`) — `2026-08-28`
+- [x] AI prompt injection containment (`<retrieved_memory_data>`, `<user_transcript>`) & tool authorization — `2026-08-28`
+- [x] Comprehensive automated security test suite (100% passing across 111 backend tests) — `2026-08-28`
 
 ---
 

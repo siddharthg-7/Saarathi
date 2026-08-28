@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 import logging
-from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, status
+from typing import Dict, Any, List, Optional, Tuple
+from fastapi import APIRouter, Depends, status
+from app.core.security import require_admin, AuthUser
+from app.core.audit import audit_logger
 from app.core.resilience.circuit_breaker import circuit_registry, CircuitState
 from app.core.resilience.response_cache import llm_cache
 from app.models import (
@@ -109,9 +111,12 @@ async def get_reliability_metrics():
     )
 
 @router.post("/circuit/reset", response_model=ResilienceCircuitResetResponse)
-async def reset_circuit_breaker(payload: Optional[ResilienceCircuitResetRequest] = None):
+async def reset_circuit_breaker(
+    payload: Optional[ResilienceCircuitResetRequest] = None,
+    admin: AuthUser = Depends(require_admin)
+):
     """
-    Manually reset one or all circuit breakers to CLOSED state.
+    Manually reset one or all circuit breakers to CLOSED state (Admin only).
     """
     target = payload.provider if payload else None
     reset_list = []
@@ -124,16 +129,33 @@ async def reset_circuit_breaker(payload: Optional[ResilienceCircuitResetRequest]
         circuit_registry.reset_all()
         reset_list = list(circuit_registry.get_all_health().keys())
 
+    audit_logger.log(
+        user_id=admin.uid,
+        action="admin.circuit_reset",
+        resource_type="circuit_breaker",
+        actor_id=admin.uid,
+        actor_type="admin",
+        metadata={"reset_providers": reset_list}
+    )
+
     return ResilienceCircuitResetResponse(
         status="ok",
         resetProviders=reset_list
     )
 
 @router.get("/cache/stats")
-async def get_cache_stats():
+async def get_cache_stats(admin: AuthUser = Depends(require_admin)):
     return llm_cache.get_stats()
 
 @router.post("/cache/clear")
-async def clear_cache():
+async def clear_cache(admin: AuthUser = Depends(require_admin)):
     llm_cache.clear()
+    audit_logger.log(
+        user_id=admin.uid,
+        action="admin.cache_clear",
+        resource_type="cache",
+        actor_id=admin.uid,
+        actor_type="admin",
+        metadata={"cleared": True}
+    )
     return {"status": "ok", "message": "Response cache cleared."}

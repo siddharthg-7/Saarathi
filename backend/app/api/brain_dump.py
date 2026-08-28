@@ -5,7 +5,8 @@ import logging
 from typing import List, Optional, Tuple, Dict, Any
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
-from app.core.security import verify_firebase_token
+from app.core.security import verify_firebase_token, decode_and_verify_token
+from app.core.rate_limiter import rate_limit, RateLimitTier
 from app.services.ai_service import call_resilient_chat_llm, call_groq_chat_stream
 from app.services.stt.stt_service import stt_manager, validate_audio_input
 from app.services.prompt_orchestration import orchestrate_brain_dump_prompt
@@ -76,19 +77,18 @@ def find_completed_json_objects(text: str, start_index: int = 0) -> List[Tuple[d
 
 @router.websocket("/ws")
 async def brain_dump_ws(websocket: WebSocket, token: Optional[str] = None):
-    await websocket.accept()
-    
-    # 1. Verify token
+    auth_token = token or websocket.query_params.get("token")
     try:
-        from app.core.security import auth
-        if token and token != "undefined" and token != "null" and token != "":
-            decoded_token = auth.verify_id_token(token)
-            uid = decoded_token["uid"]
-        else:
-            uid = "dev-user-uid"
+        auth_user = decode_and_verify_token(auth_token)
+        uid = auth_user.uid
     except Exception as e:
-        logger.warning(f"WebSocket auth failed: {e}")
-        uid = "dev-user-uid"
+        logger.warning(f"Brain dump WebSocket auth rejected: {e}")
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "message": "Authentication failed. Invalid or missing token."})
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
 
     try:
         while True:
@@ -293,7 +293,7 @@ async def extract_and_persist_tasks(
             
     return bd_id, extracted_tasks, provider_used
 
-@router.post("/process", response_model=BrainDumpResponse)
+@router.post("/process", response_model=BrainDumpResponse, dependencies=[Depends(rate_limit(RateLimitTier.BRAIN_DUMP))])
 async def process_brain_dump(payload: BrainDumpRequest, uid: str = Depends(verify_firebase_token)):
     """
     Process raw text transcript directly and extract tasks with idempotency protection.
@@ -328,7 +328,7 @@ async def process_brain_dump(payload: BrainDumpRequest, uid: str = Depends(verif
             detail=get_user_friendly_message(category)
         )
 
-@router.post("/audio", response_model=BrainDumpResponse)
+@router.post("/audio", response_model=BrainDumpResponse, dependencies=[Depends(rate_limit(RateLimitTier.STT_AUDIO))])
 async def process_audio_brain_dump(
     audio: UploadFile = File(...),
     timezone: Optional[str] = Form(None),
@@ -342,8 +342,13 @@ async def process_audio_brain_dump(
     Stage 3: Resilient LLM Task Extraction -> Tasks saved
     Stage 4: Firestore Sync
     """
+    # Sanitize filename against directory traversal
+    safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', audio.filename or "recording.m4a")
+    if ".." in safe_filename or "/" in safe_filename or "\\" in safe_filename:
+        safe_filename = f"audio_{uuid.uuid4().hex[:8]}.m4a"
+
     audio_data = await audio.read()
-    content_type = validate_audio_input(audio_data, audio.content_type, audio.filename)
+    content_type = validate_audio_input(audio_data, audio.content_type, safe_filename)
     
     cp_id = checkpointId or f"cp_{uuid.uuid4().hex[:12]}"
     audio_checksum = idempotency_manager.hash_payload(audio_data)

@@ -61,54 +61,69 @@ def test_predict_batch_task_risk():
     assert data["isColdStart"] is False
 
 def test_cluster_energy_windows():
+    user_id = "user_test_ml"
     hourly_stats = [
         {"hour": h, "productivityScore": 85 if 9 <= h <= 12 else 40, "focusMinutes": 45 if 9 <= h <= 12 else 10, "completionRate": 80 if 9 <= h <= 12 else 50}
         for h in range(24)
     ]
     payload = {
-        "userId": "user_test_ml",
+        "userId": user_id,
         "hourlyStats": hourly_stats,
     }
-    response = client.post("/v1/ml/cluster-energy", json=payload)
+    response = client.post(
+        "/v1/ml/cluster-energy",
+        json=payload,
+        headers={"Authorization": f"Bearer {user_id}"}
+    )
     assert response.status_code == 200
     data = response.json()
-    assert data["userId"] == "user_test_ml"
+    assert data["userId"] == user_id
     assert len(data["clusters"]) == 3
     assert len(data["optimalTimeSlots"]) > 0
     assert "Peak Deep Work" in [c["name"] for c in data["clusters"]]
 
 def test_detect_burnout():
+    user_id = "user_burnout_test"
     daily_stats = [
         {"date": f"2026-08-{i:02d}", "focusMinutes": 380 if i > 15 else 120, "tasksPlanned": 10, "tasksCompleted": 5, "tasksOverdue": 4, "tasksRescheduled": 3, "interruptionCount": 8}
         for i in range(10, 20)
     ]
     payload = {
-        "userId": "user_burnout_test",
+        "userId": user_id,
         "recentDailyStats": daily_stats,
     }
-    response = client.post("/v1/ml/detect-burnout", json=payload)
+    response = client.post(
+        "/v1/ml/detect-burnout",
+        json=payload,
+        headers={"Authorization": f"Bearer {user_id}"}
+    )
     assert response.status_code == 200
     data = response.json()
-    assert data["userId"] == "user_burnout_test"
+    assert data["userId"] == user_id
     assert "burnoutRiskScore" in data
     assert data["burnoutRiskScore"] > 0
     assert len(data["contributingIndicators"]) > 0
     assert len(data["recommendations"]) > 0
 
 def test_forecast_productivity():
+    user_id = "user_forecast_test"
     daily_stats = [
         {"date": f"2026-08-{i:02d}", "tasksCompleted": 5 + (i % 3), "focusMinutes": 150 + (i * 5)}
         for i in range(1, 15)
     ]
     payload = {
-        "userId": "user_forecast_test",
+        "userId": user_id,
         "historicalDailyStats": daily_stats,
         "forecastDaysCount": 7,
     }
-    response = client.post("/v1/ml/forecast-productivity", json=payload)
+    response = client.post(
+        "/v1/ml/forecast-productivity",
+        json=payload,
+        headers={"Authorization": f"Bearer {user_id}"}
+    )
     assert response.status_code == 200
     data = response.json()
-    assert data["userId"] == "user_forecast_test"
+    assert data["userId"] == user_id
     assert len(data["forecastDays"]) == 7
     assert data["expectedWeeklyCompleted"] > 0
     assert data["expectedWeeklyFocusMinutes"] > 0

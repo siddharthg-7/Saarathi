@@ -1,0 +1,48 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAudio(contentType) {
+      return contentType.matches('audio/.*');
+    }
+
+    function isImage(contentType) {
+      return contentType.matches('image/.*');
+    }
+
+    // User Audio Recordings & Voice Brain Dumps (Max 25MB, Audio only)
+    match /users/{userId}/audio/{fileId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && isAudio(request.resource.contentType)
+                   && request.resource.size < 25 * 1024 * 1024;
+      allow delete: if isOwner(userId);
+    }
+
+    // User Profile Avatars (Max 5MB, Image only)
+    match /avatars/{userId}/{fileId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId)
+                   && isImage(request.resource.contentType)
+                   && request.resource.size < 5 * 1024 * 1024;
+      allow delete: if isOwner(userId);
+    }
+
+    // User Attachments & Docs (Max 10MB, No executables / HTML)
+    match /users/{userId}/attachments/{fileId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId)
+                   && request.resource.size < 10 * 1024 * 1024
+                   && !request.resource.contentType.matches('application/x-.*|text/html|application/javascript');
+      allow delete: if isOwner(userId);
+    }
+  }
+}

@@ -3,11 +3,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 from app.models import TelemetryEventRequest, TelemetryBatchRequest, TelemetryBatchResponse
 from app.core.security import verify_firebase_token
+from app.core.rate_limiter import rate_limit, RateLimitTier
 from app.services.firestore_service import save_telemetry_event, save_telemetry_batch
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1/telemetry", tags=["Telemetry"])
+router = APIRouter(prefix="/v1/telemetry", tags=["Telemetry"], dependencies=[Depends(rate_limit(RateLimitTier.TELEMETRY))])
 
 @router.post("/event", status_code=status.HTTP_200_OK)
 @router.post("/events", status_code=status.HTTP_200_OK)

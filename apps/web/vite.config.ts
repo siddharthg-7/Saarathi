@@ -11,6 +11,33 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase')) {
+                return 'vendor-firebase';
+              }
+              if (id.includes('framer-motion')) {
+                return 'vendor-motion';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-lucide';
+              }
+              if (id.includes('date-fns') || id.includes('react-toastify') || id.includes('canvas-confetti')) {
+                return 'vendor-ui';
+              }
+              if (id.includes('react') || id.includes('react-dom') || id.includes('zustand')) {
+                return 'vendor-react-core';
+              }
+              return 'vendor-libs';
+            }
+          },
+        },
+      },
+    },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
