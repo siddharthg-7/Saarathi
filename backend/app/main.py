@@ -1,6 +1,14 @@
 import os
+import sys
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
+
+# Ensure backend directory is in sys.path for direct module imports in deployment
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
