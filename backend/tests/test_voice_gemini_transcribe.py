@@ -11,6 +11,11 @@ from app.core.resilience.circuit_breaker import circuit_registry, CircuitBreaker
 def reset_all_circuits():
     circuit_registry.reset_all()
 
+@pytest.fixture(autouse=True)
+def mock_gemini_api_key():
+    with patch("app.services.stt.gemini_provider.settings.GEMINI_API_KEY", "mock-key"):
+        yield
+
 @pytest.mark.asyncio
 async def test_audio_input_validation():
     # 1. Empty payload rejected
