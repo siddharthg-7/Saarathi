@@ -7,16 +7,75 @@ from app.services.tool_calling import parse_and_execute_tools
 
 logger = logging.getLogger(__name__)
 
-# Supported prebuilt voice identities in Gemini Live API
+# Supported prebuilt realistic HD voice identities in Gemini Live API (2026 Library)
 VOICE_PERSONAS: Dict[str, str] = {
-    "puck": "Puck",       # Playful, upbeat
-    "kore": "Kore",       # Calm, soothing, mindful
-    "charon": "Charon",   # Deep, resonant, authoritative
-    "fenrir": "Fenrir",   # Warm, grounded, confident
-    "aoede": "Aoede",     # Clear, melodic, articulate
+    # Popular & Flagship
+    "puck": "Puck",
+    "kore": "Kore",
+    "zephyr": "Zephyr",
+    "charon": "Charon",
+    "fenrir": "Fenrir",
+    "aoede": "Aoede",
+
+    # Calm & Mindful
+    "leda": "Leda",
+    "umbriel": "Umbriel",
+    "erinome": "Erinome",
+    "gacrux": "Gacrux",
+    "sadachbia": "Sadachbia",
+
+    # Energetic & Modern
+    "orus": "Orus",
+    "autonoe": "Autonoe",
+    "despina": "Despina",
+    "schedar": "Schedar",
+    "vindemiatrix": "Vindemiatrix",
+
+    # Deep & Resonant
+    "enceladus": "Enceladus",
+    "iapetus": "Iapetus",
+    "rasalgethi": "Rasalgethi",
+    "zubenelgenubi": "Zubenelgenubi",
+
+    # Celestial HD Expressive
+    "callirhoe": "Callirhoe",
+    "algieba": "Algieba",
+    "algenib": "Algenib",
+    "laomedeia": "Laomedeia",
+    "achernar": "Achernar",
+    "alnilam": "Alnilam",
+    "pulcherrima": "Pulcherrima",
+    "achird": "Achird",
 }
 
-DEFAULT_VOICE = "Puck"
+DEFAULT_VOICE = "kore"
+
+def build_acoustic_delivery_directive(
+    energy: str = "Medium",
+    focus_mode: bool = False,
+    mood: Optional[str] = None
+) -> str:
+    """
+    Constructs prompt-directed acoustic delivery instructions for Gemini Native Audio generation.
+    Leverages model vocal steerability (pacing, whisper, excitement, empathy).
+    """
+    directives = []
+    
+    if energy.lower() in ("low", "exhausted", "tired"):
+        directives.append("Speak in a gentle, warm, soothing, and slightly slower cadence. Use empathetic inflection.")
+    elif energy.lower() in ("high", "peak"):
+        directives.append("Speak with an upbeat, brisk, energized, and motivating conversational tone.")
+    else:
+        directives.append("Speak with a natural, clear, balanced, and conversational cadence.")
+
+    if focus_mode:
+        directives.append("Focus Mode Active: Keep delivery calm, low-profile, and distraction-free.")
+
+    if mood:
+        directives.append(f"Adapt vocal delivery to match user mood context: '{mood}'.")
+
+    return "\n### Prompt-Directed Acoustic Delivery & Prosody:\n" + " ".join(directives)
+
 
 class GeminiLiveVoiceBridge:
     """

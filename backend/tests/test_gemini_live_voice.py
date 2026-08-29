@@ -4,11 +4,16 @@ import base64
 from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi.testclient import TestClient
 from app.main import app
-from app.services.stt.gemini_live_bridge import GeminiLiveVoiceBridge, VOICE_PERSONAS, DEFAULT_VOICE
+from app.services.stt.gemini_live_bridge import (
+    GeminiLiveVoiceBridge,
+    VOICE_PERSONAS,
+    DEFAULT_VOICE,
+    build_acoustic_delivery_directive,
+)
 
 @pytest.mark.asyncio
 async def test_voice_persona_resolution():
-    """Verify prebuilt Gemini voice personas resolve properly and case-insensitively."""
+    """Verify prebuilt Gemini voice personas resolve properly and case-insensitively across the 30 HD voices roster."""
     bridge = GeminiLiveVoiceBridge(voice="puck")
     assert bridge.voice_name == "Puck"
 
@@ -18,15 +23,40 @@ async def test_voice_persona_resolution():
     bridge.set_voice("CHARON")
     assert bridge.voice_name == "Charon"
 
-    bridge.set_voice("fenrir")
-    assert bridge.voice_name == "Fenrir"
+    bridge.set_voice("zephyr")
+    assert bridge.voice_name == "Zephyr"
 
-    bridge.set_voice("aoede")
-    assert bridge.voice_name == "Aoede"
+    bridge.set_voice("leda")
+    assert bridge.voice_name == "Leda"
+
+    bridge.set_voice("orus")
+    assert bridge.voice_name == "Orus"
+
+    bridge.set_voice("enceladus")
+    assert bridge.voice_name == "Enceladus"
+
+    bridge.set_voice("callirhoe")
+    assert bridge.voice_name == "Callirhoe"
 
     # Default fallback on invalid/empty
     assert GeminiLiveVoiceBridge.resolve_voice("") == DEFAULT_VOICE
     assert GeminiLiveVoiceBridge.resolve_voice(None) == DEFAULT_VOICE
+
+
+def test_prompt_directed_acoustic_delivery():
+    """Verify acoustic delivery directives adapt to energy, focus mode, and mood."""
+    directive_low = build_acoustic_delivery_directive(energy="low", focus_mode=False)
+    assert "gentle" in directive_low.lower() or "soothing" in directive_low.lower()
+
+    directive_high = build_acoustic_delivery_directive(energy="high", focus_mode=False)
+    assert "upbeat" in directive_high.lower() or "energized" in directive_high.lower()
+
+    directive_focus = build_acoustic_delivery_directive(energy="medium", focus_mode=True)
+    assert "focus mode active" in directive_focus.lower()
+
+    directive_mood = build_acoustic_delivery_directive(energy="medium", mood="celebratory")
+    assert "celebratory" in directive_mood.lower()
+
 
 @pytest.mark.asyncio
 async def test_live_config_construction():

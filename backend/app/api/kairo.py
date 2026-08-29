@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, HTTPException
 from pydantic import BaseModel
-from app.services.stt.gemini_live_bridge import GeminiLiveVoiceBridge, VOICE_PERSONAS
+from app.services.stt.gemini_live_bridge import GeminiLiveVoiceBridge, VOICE_PERSONAS, build_acoustic_delivery_directive
 from app.core.security import verify_firebase_token, decode_and_verify_token
 from app.core.rate_limiter import rate_limit, RateLimitTier
 from app.services.firestore_service import (
@@ -259,7 +259,7 @@ async def kairo_live_voice_websocket(
         focus_mode=False,
         goals=goals,
         tasks=tasks
-    )
+    ) + build_acoustic_delivery_directive(energy="High", focus_mode=False)
 
     is_running = True
 

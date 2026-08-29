@@ -40,6 +40,18 @@ export const KairoAssistantWidget: React.FC<KairoAssistantWidgetProps> = ({
   const [input, setInput] = useState('');
   const [showVoiceMenu, setShowVoiceMenu] = useState(false);
   const [confirmDeleteAction, setConfirmDeleteAction] = useState<KairoSuggestedAction | null>(null);
+  const [voiceCategory, setVoiceCategory] = useState<string>('all');
+  const [voiceSearch, setVoiceSearch] = useState('');
+
+  const filteredVoices = KAIRO_VOICE_PERSONAS.filter((v) => {
+    const matchesCategory = voiceCategory === 'all' || v.category === voiceCategory;
+    const matchesSearch =
+      !voiceSearch ||
+      v.name.toLowerCase().includes(voiceSearch.toLowerCase()) ||
+      v.description.toLowerCase().includes(voiceSearch.toLowerCase()) ||
+      v.tone.toLowerCase().includes(voiceSearch.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const {
     chatHistory,
@@ -314,30 +326,74 @@ export const KairoAssistantWidget: React.FC<KairoAssistantWidgetProps> = ({
                   </button>
 
                   {showVoiceMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-2xl shadow-xl p-2 z-50 space-y-1">
-                      <div className="text-[10px] font-bold text-muted px-2 py-1 uppercase tracking-wider">
-                        Gemini Voice Persona
-                      </div>
-                      {KAIRO_VOICE_PERSONAS.map((vp) => (
+                    <div className="absolute right-0 mt-2 w-72 max-h-96 bg-surface border border-border rounded-2xl shadow-2xl p-3 z-50 flex flex-col space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] font-bold text-text uppercase tracking-wider flex items-center gap-1.5">
+                          <Headphones className="w-3.5 h-3.5 text-primary" />
+                          <span>Gemini HD Voices ({KAIRO_VOICE_PERSONAS.length})</span>
+                        </div>
                         <button
-                          key={vp.id}
-                          onClick={() => {
-                            setVoicePersona(vp.id);
-                            setShowVoiceMenu(false);
-                          }}
-                          className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
-                            selectedVoicePersona === vp.id
-                              ? 'bg-primary/15 text-primary font-semibold'
-                              : 'text-text hover:bg-surfaceSecondary'
-                          }`}
+                          onClick={() => setShowVoiceMenu(false)}
+                          className="text-textSecondary hover:text-text p-1 text-xs"
                         >
-                          <div>
-                            <div className="font-medium">{vp.name}</div>
-                            <div className="text-[10px] text-textSecondary">{vp.description}</div>
-                          </div>
-                          {selectedVoicePersona === vp.id && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                          ✕
                         </button>
-                      ))}
+                      </div>
+
+                      {/* Search Bar */}
+                      <input
+                        type="text"
+                        placeholder="Search 2026 HD voices..."
+                        value={voiceSearch}
+                        onChange={(e) => setVoiceSearch(e.target.value)}
+                        className="w-full px-2.5 py-1 text-xs bg-surfaceSecondary border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                      />
+
+                      {/* Category Chips */}
+                      <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar shrink-0">
+                        {['all', 'popular', 'calm', 'energetic', 'deep', 'celestial'].map((cat) => (
+                          <button
+                            key={cat}
+                            onClick={() => setVoiceCategory(cat)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-medium capitalize shrink-0 transition-colors ${
+                              voiceCategory === cat
+                                ? 'bg-primary text-white font-semibold'
+                                : 'bg-surfaceSecondary text-textSecondary hover:text-text border border-border'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Voice List */}
+                      <div className="overflow-y-auto max-h-56 space-y-1 pr-1">
+                        {filteredVoices.map((vp) => (
+                          <button
+                            key={vp.id}
+                            onClick={() => {
+                              setVoicePersona(vp.id);
+                              setShowVoiceMenu(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                              selectedVoicePersona === vp.id
+                                ? 'bg-primary/15 text-primary font-semibold border border-primary/20'
+                                : 'text-text hover:bg-surfaceSecondary'
+                            }`}
+                          >
+                            <div className="truncate pr-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-[11px]">{vp.name}</span>
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-surfaceSecondary text-textSecondary border border-border font-mono">
+                                  {vp.gender}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-textSecondary truncate">{vp.description}</div>
+                            </div>
+                            {selectedVoicePersona === vp.id && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
