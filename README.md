@@ -64,33 +64,195 @@ At the core of the ecosystem is **Kairo** — a calm, context-aware AI assistant
 
 ---
 
-## ✨ Key Features & Capabilities
+## ✨ Features & Deep-Dive
 
-### 🤖 Kairo Conversational AI Companion
-* **Proactive Executive Assistant**: High context retention across tasks, past dialogues, calendar slots, and user habits.
-* **Direct Action Execution**: Converts conversational intents into scheduled tasks, updated priorities, and timer triggers without friction.
-* **Low-Latency Voice Interaction**: Ultra-responsive speech pipeline powered by Deepgram Nova-2 STT/TTS and Groq Llama 3.3.
+Saarathi combines modern user interface design, behavioral machine learning, voice intelligence, and fault-tolerant architecture to deliver an end-to-end personal productivity ecosystem.
 
-### 🧠 Predictive ML & Behavioral Telemetry
-* **Procrastination & Risk Prediction**: Trained machine learning classifiers (XGBoost / Scikit-Learn) estimating task completion likelihood, delay probability, and skip risk.
-* **Cognitive Energy Dynamic Clustering**: Analyzes time-of-day completion velocities to identify optimal focus windows.
-* **Explainable AI (XAI)**: Actionable feedback showing why specific tasks are flagged with elevated delay probabilities.
+| Module | Core Capability | Tech Powering It |
+| :--- | :--- | :--- |
+| [**Kairo AI Assistant**](#-1-kairo-ai--autonomous-executive-voice-companion) | Autonomous voice & chat companion, context reasoning, and tool execution | Groq LLaMA 3.3, Deepgram STT/TTS, FastAPI |
+| [**Predictive ML & XAI**](#-2-predictive-ml-engine--explainable-ai-xai) | Procrastination risk, energy clustering, burnout detection & factor attribution | Scikit-Learn, XGBoost, KMeans, SHAP/XAI |
+| [**Voice Brain Dump**](#-3-voice-brain-dump-pipeline) | Unstructured monologue transcription & multi-task automatic breakdown | Deepgram Nova-2, Groq LLM, Firestore |
+| [**Smart Task Matrix**](#-4-multi-dimensional-task-matrix--daily-agenda) | Energy, difficulty, urgency mapping, Kanban, and dynamic Today view | Zustand, React 18, React Native |
+| [**Vector Memory Vault**](#-5-semantic-vector-memory-vault) | Long-term contextual memory retrieval across conversations and notes | Supabase `pgvector`, Sentence Transformers |
+| [**Zen Focus Room**](#-6-zen-focus-room--habit-momentum-os) | Pomodoro & flow timers, ambient audio soundscapes, and streak heatmaps | Web Audio API, Reanimated, Victory Native |
+| [**Goal Hierarchy**](#-7-hierarchical-goals--milestone-alignment) | Long-term vision decomposed into linked weekly actionable deliverables | Firestore, AI Decomposition Engine |
+| [**Smart Notifications**](#-8-smart-notifications--adaptive-snooze-engine) | Cross-device alerts with cognitive energy-aware intelligent snoozing | Web Push, Expo Notifications, Service Workers |
+| [**Resilience & Offline**](#-9-enterprise-resilience--offline-first-architecture) | Circuit breakers, offline action queue, and auto-reconnecting WebSockets | Custom Circuit Breaker, IndexedDB, Axios |
 
-### 🎙️ Voice "Brain Dump" Engine
-* **Instant Stream-of-Consciousness Parsing**: Speak freely about everything on your mind; Saarathi transcribes and extracts distinct actionable items.
-* **Intelligent Attribute Extraction**: Automatically infers urgency, cognitive difficulty, estimated duration, and tags from speech recordings.
+---
 
-### 🌌 Long-Term Vector Memory Vault
-* **Semantic Retrieval**: Powered by Supabase `pgvector` and dense Sentence Transformer embeddings.
-* **Contextual Recall**: Enables Kairo and the user to instantly recall historical notes, previous decision logs, and contextual knowledge.
+### 🤖 1. Kairo AI — Autonomous Executive Voice Companion
 
-### ⏱️ Zen Focus Workspace & Habit Tracker
-* **Distraction-Free Focus Room**: Minimalist Pomodoro timer with ambient sounds and real-time state synchronization.
-* **Streak & Consistency Analytics**: Visual velocity heatmaps and habit consistency tracking.
+Kairo is built around the interaction philosophy of an executive personal aide — calm, intelligent, context-aware, proactive, and concise. It is deeply integrated into your entire workspace rather than functioning as an isolated chatbot.
 
-### 🛡️ Enterprise Resilience Architecture
-* **Circuit Breakers & Health Monitors**: Automated fallback mechanisms protecting against backend degradation.
-* **Resilient WebSocket Channels**: Automatic exponential backoff reconnection and offline state queues.
+```
+                    ┌─────────────────────────┐
+                    │   User Voice / Prompt   │
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Kairo Context Engine                      │
+│   • Active Schedule & Overdue Tasks    • Current Energy State   │
+│   • Semantic Vector Memories           • Behavioral ML Profile  │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Groq LLaMA 3.3 Engine                     │
+│               Reasoning · Tool Calls · Formatted Reply          │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+       ┌───────────────────┐           ┌───────────────────┐
+       │   Direct Action   │           │   Voice Output    │
+       │  Execution Engine │           │   Deepgram TTS    │
+       │ (Tasks/Goals/Rem) │           │ (Natural Audio)   │
+       └───────────────────┘           └───────────────────┘
+```
+
+* **Proactive Context Awareness**: When you speak with Kairo, it already knows your active schedule, current energy level, overdue tasks, and historical habits without needing repetitive context.
+* **Autonomous Tool Execution**: Safely performs real workspace modifications via structured tool calls:
+  * `create_task`: Schedules tasks with inferred energy, priority, and due dates.
+  * `update_task` / `delete_task`: Reschedules or modifies tasks conversationally.
+  * `create_reminder` / `snooze_reminder`: Configures time-based or energy-based alerts.
+  * `create_goal`: Establishes long-term goals with automatic milestone breakdowns.
+* **Low-Latency Voice Stream**: Real-time voice interaction combining Deepgram Nova-2 speech recognition with instant streaming audio responses.
+* **Anti-Robotic Persona**: Delivers actionable, witty, concise assistance without verbose AI pleasantries or boilerplate disclaimers.
+
+---
+
+### 🧠 2. Predictive ML Engine & Explainable AI (XAI)
+
+Saarathi replaces guesswork with data-driven behavioral intelligence, training models on user telemetry to anticipate obstacles before they cause delays.
+
+<div align="center">
+  <img src="https://img.shields.io/badge/ML_Algorithm-XGBoost_|_K--Means_|_Isolation_Forest-FF6F00?style=flat-square" alt="ML Stack" />
+  <img src="https://img.shields.io/badge/Explainability-SHAP_Feature_Attribution-0288D1?style=flat-square" alt="XAI" />
+</div>
+
+* **Procrastination & Delay Risk Predictor**:
+  * Evaluates individual tasks against postpone history, estimated cognitive load, energy requirements, and time of day.
+  * Calculates exact **Completion Probability (%)**, **Delay Probability (%)**, and **Skip Risk Score**.
+  * Classifies tasks into `Low`, `Medium`, and `High Risk` with immediate visual flags.
+* **Cognitive Energy Dynamic Clustering (K-Means)**:
+  * Analyzes historical task completion velocities across 24-hour cycles.
+  * Identifies the user's authentic peak focus windows (Morning, Afternoon, or Evening) to align difficult tasks with peak mental acuity.
+* **Smart Time-Slot Recommender**:
+  * Cross-references task difficulty with the user’s learned energy curve to suggest optimal execution time blocks.
+* **Burnout & Workload Anomaly Detection (Isolation Forest)**:
+  * Detects velocity dips, backlog accumulation, and high-energy task clustering to warn users before mental exhaustion sets in.
+* **Explainable AI (XAI) Factor Attribution**:
+  * Provides transparent explanations for why a task was flagged (e.g., *"Postponed 3 times + High Energy required during an Afternoon low-energy dip"*).
+  * Offers concrete mitigation strategies (e.g., *"Break into two 20-minute subtasks and move to 10:00 AM"*).
+
+---
+
+### 🎙️ 3. Voice "Brain Dump" Pipeline
+
+Turn fragmented thoughts, chaotic meetings, or rambling voice notes into structured, prioritized project backlogs in seconds.
+
+* **Stream-of-Consciousness Recording**: Speak freely for minutes without structuring thoughts; capture messy ideas whenever inspiration strikes.
+* **High-Accuracy Speech-to-Text**: Powered by Deepgram Nova-2 with automatic punctuation, smart formatting, and domain terminology recognition.
+* **Intelligent Entity Decomposition**: An AI extraction pipeline parses the monologue and produces atomic task cards with:
+  * Clean, imperative task titles and actionable descriptions.
+  * Inferred **Priority** (`Low`, `Medium`, `High`, `Urgent`).
+  * Inferred **Energy Level** (`Low`, `Medium`, `High`).
+  * Inferred **Category** (`Coding`, `Work`, `Personal`, `Fitness`, `Finance`, `Admin`).
+  * Inferred **Estimated Duration** and **Due Date**.
+* **Interactive Staging & 1-Click Commit**: Review, edit, or toggle extracted tasks in a preview tray before committing them directly to Firestore.
+
+---
+
+### ⚡ 4. Multi-Dimensional Task Matrix & Daily Agenda
+
+Saarathi reimagines task management with deep metadata designed around human cognitive capability.
+
+* **Multi-Dimensional Task Cards**:
+  * **Cognitive Energy Required**: Low (Routine), Medium (Active), High (Deep Work).
+  * **Difficulty Scale**: 1 to 5 scale representing complexity and mental resistance.
+  * **Urgency & Priority**: Eisenhower matrix classification (Urgent/Important).
+  * **Postpone Counter**: Automatic telemetry tracking how many times a task was rescheduled.
+* **Dynamic "Today" View**:
+  * An AI-optimized daily agenda that automatically re-sequences tasks based on your current energy and elapsed time.
+  * Includes a **Morning Briefing** with top priorities, risk warnings, and quick win suggestions.
+* **Flexible Visual Workflows**:
+  * **Kanban Board**: Drag-and-drop workflow (`To Do`, `In Progress`, `Blocked`, `Done`).
+  * **Eisenhower Quad**: Matrix visualization sorting urgent vs important quadrant priorities.
+  * **Calendar Time-Blocking**: Synchronized day and week schedule views with duration snapping.
+
+---
+
+### 🌌 5. Semantic Vector Memory Vault
+
+Never lose a piece of context, preference, or past decision. Saarathi integrates a dedicated semantic memory engine.
+
+* **Supabase `pgvector` Architecture**: High-dimensional vector indexing using dense Sentence Transformer embeddings (`all-MiniLM-L6-v2`).
+* **Automated Knowledge Extraction**: Automatically harvests long-term user facts from chats, brain dumps, and completed milestones:
+  * Work preferences (*"Prefers deep coding sessions in the early morning"*).
+  * Recurring commitments (*"Has team standup every Tuesday at 10 AM"*).
+  * Personal habits (*"Goes to the gym after 6 PM"*).
+* **Instant Semantic Search**: Search your entire life history using natural language concepts rather than rigid keyword matches.
+* **Assistant Context Injection**: Kairo seamlessly pulls relevant past memories into the conversation context window during planning sessions.
+
+---
+
+### ⏱️ 6. Zen Focus Room & Habit Momentum OS
+
+Designed to eliminate digital friction and keep you in deep flow.
+
+* **Zen Focus Room**:
+  * Minimalist Pomodoro and custom open-ended Flow timers.
+  * Integrated **Ambient Soundscapes**: Binaural focus beats, soft rainfall, white noise, and coffee shop ambiance.
+  * Distraction-blocking interface with full-screen immersive mode.
+* **Habit Consistency Engine**:
+  * Track daily and weekly recurring habit rituals with target frequency targets.
+  * **Streak & Momentum Tracking**: Visual activity heatmaps (GitHub-style contribution grid).
+  * **Momentum Protection**: Grace period algorithms to prevent broken streaks from disrupting long-term momentum.
+* **Focus Telemetry**: Logs actual focused time against estimated task durations to improve future ML duration estimation accuracy.
+
+---
+
+### 🎯 7. Hierarchical Goals & Milestone Alignment
+
+Connect your minute-to-minute tasks to your 5-year vision.
+
+* **Tiered Goal Architecture**: Organize aspirations into **Vision** → **Objectives** → **Milestones** → **Actionable Tasks**.
+* **Dynamic Progress Calculation**: Automatically recalculates milestone and goal completion percentages as linked daily tasks are checked off.
+* **AI Goal Decomposition**: Ask Kairo to break down ambitious goals (e.g., *"Prepare for AWS Solutions Architect Certification"*) into weekly actionable sprints.
+
+---
+
+### 🔔 8. Smart Notifications & Adaptive Snooze Engine
+
+Notifications that respect your focus rather than fragmenting your attention.
+
+* **Cross-Platform Delivery**: Synchronized notifications across Web Push and Mobile Native (iOS / Android Expo push tokens).
+* **Cognitive Energy-Aware Snoozing**:
+  * ☀️ **Snooze to Next High-Energy Window**: Re-alerts you when your cognitive curve indicates optimal focus.
+  * 🌅 **Snooze to Tomorrow Morning**: Postpones non-essential alerts to the start of the next workday.
+  * ⏱️ **Quick Snooze**: Standard +15m, +1h, or +3h options.
+* **Quiet Hours & Fatigue Safeguards**: Intelligent throttling prevents notification spam during active focus sessions and late-night hours.
+
+---
+
+### 🛡️ 9. Enterprise Resilience & Offline-First Architecture
+
+Engineered for 99.9% availability, graceful degradation, and uninterrupted offline workflows.
+
+* **Backend Circuit Breakers**:
+  * Monitors health and error rates across external AI providers (Groq, Deepgram, Supabase).
+  * Automatically trips and routes requests to fallback heuristic engines when external APIs experience outages.
+* **Resilient WebSocket Channels**:
+  * Features exponential backoff, jittered reconnects, heartbeat health checks, and packet queueing.
+* **Offline Action Queue**:
+  * Queue task creations, completions, and edits locally in IndexedDB / AsyncStorage when disconnected.
+  * Automatically reconciles and syncs state upon internet reconnection.
+* **Zero-Trust Security**:
+  * Enforces strict HTTP Security Headers (`nosniff`, `DENY` clickjacking, strict CSP).
+  * Comprehensive token validation and user identity isolation across all database operations.
 
 ---
 
