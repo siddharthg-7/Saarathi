@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="#-demo--media"><img src="https://img.shields.io/badge/Demo-Live_Preview-6366F1?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo" /></a>
-  <a href="#-tech-stack"><img src="https://img.shields.io/badge/Stack-React_Native_|_Vite_|_FastAPI-10B981?style=for-the-badge" alt="Stack" /></a>
+  <a href="#-technology-stack--ecosystem"><img src="https://img.shields.io/badge/Stack-React_Native_|_Vite_|_FastAPI-10B981?style=for-the-badge" alt="Stack" /></a>
   <a href="https://github.com/siddharthg-7/Saarathi/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge" alt="License" /></a>
 </p>
 
@@ -26,7 +26,7 @@
 
 ---
 
-## 📖 Description
+## <img src="https://api.iconify.design/lucide:book-open.svg?color=%236366F1&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Description
 
 **Saarathi** is a next-generation productivity operating system designed to bridge the gap between human intention and execution. Rather than acting as a static to-do list, Saarathi acts as an autonomous life companion that understands your cognitive energy levels, detects early signs of burnout and task avoidance, and dynamically recalibrates your day.
 
@@ -34,18 +34,18 @@ At the core of the ecosystem is **Kairo** — a calm, context-aware AI assistant
 
 ---
 
-## 🎬 Demo & Media
+## <img src="https://api.iconify.design/lucide:play-circle.svg?color=%23EF4444&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Demo & Media
 
 > Experience Saarathi and Kairo in action. Use the links below to test the live deployments or watch feature walkthroughs.
 
 | Resource | Link | Details |
 | :--- | :--- | :--- |
-| 🌐 **Live Web App** | [![Web Demo](https://img.shields.io/badge/Launch-Web_Dashboard-6366F1?style=flat-square&logo=google-chrome&logoColor=white)](https://your-saarathi-web-demo.vercel.app) | Full-featured desktop web application (Vite + React) |
-| 🎥 **Video Walkthrough** | [![Video Demo](https://img.shields.io/badge/Watch-2--Min_Product_Demo-EF4444?style=flat-square&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=your-demo-video-id) | Overview of Kairo AI, Voice Brain Dump & ML Insights |
-| 📱 **Mobile App (Expo)** | [![Expo Preview](https://img.shields.io/badge/Preview-Expo_Go_Project-000000?style=flat-square&logo=expo&logoColor=white)](https://expo.dev/@your-org/saarathi) | Interactive cross-platform mobile client (iOS / Android) |
-| 📚 **API Docs (Swagger)**| [![FastAPI Docs](https://img.shields.io/badge/Explore-Swagger_UI-009688?style=flat-square&logo=fastapi&logoColor=white)](http://localhost:8000/docs) | Interactive OpenAPI specifications and endpoints |
+| <img src="https://api.iconify.design/lucide:globe.svg?color=%236366F1&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Live Web App** | [![Web Demo](https://img.shields.io/badge/Launch-Web_Dashboard-6366F1?style=flat-square&logo=google-chrome&logoColor=white)](https://your-saarathi-web-demo.vercel.app) | Full-featured desktop web application (Vite + React) |
+| <img src="https://api.iconify.design/lucide:video.svg?color=%23EF4444&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Video Walkthrough** | [![Video Demo](https://img.shields.io/badge/Watch-2--Min_Product_Demo-EF4444?style=flat-square&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=your-demo-video-id) | Overview of Kairo AI, Voice Brain Dump & ML Insights |
+| <img src="https://api.iconify.design/lucide:smartphone.svg?color=%2310B981&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Mobile App (Expo)** | [![Expo Preview](https://img.shields.io/badge/Preview-Expo_Go_Project-000000?style=flat-square&logo=expo&logoColor=white)](https://expo.dev/@your-org/saarathi) | Interactive cross-platform mobile client (iOS / Android) |
+| <img src="https://api.iconify.design/lucide:file-code.svg?color=%23009688&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **API Docs (Swagger)** | [![FastAPI Docs](https://img.shields.io/badge/Explore-Swagger_UI-009688?style=flat-square&logo=fastapi&logoColor=white)](http://localhost:8000/docs) | Interactive OpenAPI specifications and endpoints |
 
-### 🖼️ Visual Previews
+### <img src="https://api.iconify.design/lucide:image.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Visual Previews
 
 ```
 ┌──────────────────────────────────────────────┐  ┌──────────────────────────────────────────────┐
@@ -64,25 +64,25 @@ At the core of the ecosystem is **Kairo** — a calm, context-aware AI assistant
 
 ---
 
-## ✨ Features & Deep-Dive
+## <img src="https://api.iconify.design/lucide:sparkles.svg?color=%23F59E0B&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Features & Deep-Dive
 
 Saarathi combines modern user interface design, behavioral machine learning, voice intelligence, and fault-tolerant architecture to deliver an end-to-end personal productivity ecosystem.
 
 | Module | Core Capability | Tech Powering It |
 | :--- | :--- | :--- |
-| [**Kairo AI Assistant**](#-1-kairo-ai--autonomous-executive-voice-companion) | Autonomous voice & chat companion, context reasoning, and tool execution | Groq LLaMA 3.3, Deepgram STT/TTS, FastAPI |
-| [**Predictive ML & XAI**](#-2-predictive-ml-engine--explainable-ai-xai) | Procrastination risk, energy clustering, burnout detection & factor attribution | Scikit-Learn, XGBoost, KMeans, SHAP/XAI |
-| [**Voice Brain Dump**](#-3-voice-brain-dump-pipeline) | Unstructured monologue transcription & multi-task automatic breakdown | Deepgram Nova-2, Groq LLM, Firestore |
-| [**Smart Task Matrix**](#-4-multi-dimensional-task-matrix--daily-agenda) | Energy, difficulty, urgency mapping, Kanban, and dynamic Today view | Zustand, React 18, React Native |
-| [**Vector Memory Vault**](#-5-semantic-vector-memory-vault) | Long-term contextual memory retrieval across conversations and notes | Supabase `pgvector`, Sentence Transformers |
-| [**Zen Focus Room**](#-6-zen-focus-room--habit-momentum-os) | Pomodoro & flow timers, ambient audio soundscapes, and streak heatmaps | Web Audio API, Reanimated, Victory Native |
-| [**Goal Hierarchy**](#-7-hierarchical-goals--milestone-alignment) | Long-term vision decomposed into linked weekly actionable deliverables | Firestore, AI Decomposition Engine |
-| [**Smart Notifications**](#-8-smart-notifications--adaptive-snooze-engine) | Cross-device alerts with cognitive energy-aware intelligent snoozing | Web Push, Expo Notifications, Service Workers |
-| [**Resilience & Offline**](#-9-enterprise-resilience--offline-first-architecture) | Circuit breakers, offline action queue, and auto-reconnecting WebSockets | Custom Circuit Breaker, IndexedDB, Axios |
+| [**Kairo AI Assistant**](#1-kairo-ai--autonomous-executive-voice-companion) | Autonomous voice & chat companion, context reasoning, and tool execution | Groq LLaMA 3.3, Deepgram STT/TTS, FastAPI |
+| [**Predictive ML & XAI**](#2-predictive-ml-engine--explainable-ai-xai) | Procrastination risk, energy clustering, burnout detection & factor attribution | Scikit-Learn, XGBoost, KMeans, SHAP/XAI |
+| [**Voice Brain Dump**](#3-voice-brain-dump-pipeline) | Unstructured monologue transcription & multi-task automatic breakdown | Deepgram Nova-2, Groq LLM, Firestore |
+| [**Smart Task Matrix**](#4-multi-dimensional-task-matrix--daily-agenda) | Energy, difficulty, urgency mapping, Kanban, and dynamic Today view | Zustand, React 18, React Native |
+| [**Vector Memory Vault**](#5-semantic-vector-memory-vault) | Long-term contextual memory retrieval across conversations and notes | Supabase `pgvector`, Sentence Transformers |
+| [**Zen Focus Room**](#6-zen-focus-room--habit-momentum-os) | Pomodoro & flow timers, ambient audio soundscapes, and streak heatmaps | Web Audio API, Reanimated, Victory Native |
+| [**Goal Hierarchy**](#7-hierarchical-goals--milestone-alignment) | Long-term vision decomposed into linked weekly actionable deliverables | Firestore, AI Decomposition Engine |
+| [**Smart Notifications**](#8-smart-notifications--adaptive-snooze-engine) | Cross-device alerts with cognitive energy-aware intelligent snoozing | Web Push, Expo Notifications, Service Workers |
+| [**Resilience & Offline**](#9-enterprise-resilience--offline-first-architecture) | Circuit breakers, offline action queue, and auto-reconnecting WebSockets | Custom Circuit Breaker, IndexedDB, Axios |
 
 ---
 
-### 🤖 1. Kairo AI — Autonomous Executive Voice Companion
+### <img src="https://api.iconify.design/lucide:bot.svg?color=%236366F1&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 1. Kairo AI — Autonomous Executive Voice Companion
 
 Kairo is built around the interaction philosophy of an executive personal aide — calm, intelligent, context-aware, proactive, and concise. It is deeply integrated into your entire workspace rather than functioning as an isolated chatbot.
 
@@ -124,7 +124,7 @@ Kairo is built around the interaction philosophy of an executive personal aide �
 
 ---
 
-### 🧠 2. Predictive ML Engine & Explainable AI (XAI)
+### <img src="https://api.iconify.design/lucide:brain-circuit.svg?color=%23EC4899&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 2. Predictive ML Engine & Explainable AI (XAI)
 
 Saarathi replaces guesswork with data-driven behavioral intelligence, training models on user telemetry to anticipate obstacles before they cause delays.
 
@@ -150,7 +150,7 @@ Saarathi replaces guesswork with data-driven behavioral intelligence, training m
 
 ---
 
-### 🎙️ 3. Voice "Brain Dump" Pipeline
+### <img src="https://api.iconify.design/lucide:mic.svg?color=%238B5CF6&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 3. Voice "Brain Dump" Pipeline
 
 Turn fragmented thoughts, chaotic meetings, or rambling voice notes into structured, prioritized project backlogs in seconds.
 
@@ -166,7 +166,7 @@ Turn fragmented thoughts, chaotic meetings, or rambling voice notes into structu
 
 ---
 
-### ⚡ 4. Multi-Dimensional Task Matrix & Daily Agenda
+### <img src="https://api.iconify.design/lucide:layout-grid.svg?color=%233B82F6&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 4. Multi-Dimensional Task Matrix & Daily Agenda
 
 Saarathi reimagines task management with deep metadata designed around human cognitive capability.
 
@@ -185,7 +185,7 @@ Saarathi reimagines task management with deep metadata designed around human cog
 
 ---
 
-### 🌌 5. Semantic Vector Memory Vault
+### <img src="https://api.iconify.design/lucide:database.svg?color=%2306B6D4&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 5. Semantic Vector Memory Vault
 
 Never lose a piece of context, preference, or past decision. Saarathi integrates a dedicated semantic memory engine.
 
@@ -199,7 +199,7 @@ Never lose a piece of context, preference, or past decision. Saarathi integrates
 
 ---
 
-### ⏱️ 6. Zen Focus Room & Habit Momentum OS
+### <img src="https://api.iconify.design/lucide:timer.svg?color=%2310B981&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 6. Zen Focus Room & Habit Momentum OS
 
 Designed to eliminate digital friction and keep you in deep flow.
 
@@ -215,7 +215,7 @@ Designed to eliminate digital friction and keep you in deep flow.
 
 ---
 
-### 🎯 7. Hierarchical Goals & Milestone Alignment
+### <img src="https://api.iconify.design/lucide:target.svg?color=%23F59E0B&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 7. Hierarchical Goals & Milestone Alignment
 
 Connect your minute-to-minute tasks to your 5-year vision.
 
@@ -225,20 +225,20 @@ Connect your minute-to-minute tasks to your 5-year vision.
 
 ---
 
-### 🔔 8. Smart Notifications & Adaptive Snooze Engine
+### <img src="https://api.iconify.design/lucide:bell.svg?color=%23F43F5E&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 8. Smart Notifications & Adaptive Snooze Engine
 
 Notifications that respect your focus rather than fragmenting your attention.
 
 * **Cross-Platform Delivery**: Synchronized notifications across Web Push and Mobile Native (iOS / Android Expo push tokens).
 * **Cognitive Energy-Aware Snoozing**:
-  * ☀️ **Snooze to Next High-Energy Window**: Re-alerts you when your cognitive curve indicates optimal focus.
-  * 🌅 **Snooze to Tomorrow Morning**: Postpones non-essential alerts to the start of the next workday.
-  * ⏱️ **Quick Snooze**: Standard +15m, +1h, or +3h options.
+  * <img src="https://api.iconify.design/lucide:sun.svg?color=%23F59E0B&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **Snooze to Next High-Energy Window**: Re-alerts you when your cognitive curve indicates optimal focus.
+  * <img src="https://api.iconify.design/lucide:sunrise.svg?color=%23F59E0B&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **Snooze to Tomorrow Morning**: Postpones non-essential alerts to the start of the next workday.
+  * <img src="https://api.iconify.design/lucide:clock.svg?color=%233B82F6&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **Quick Snooze**: Standard +15m, +1h, or +3h options.
 * **Quiet Hours & Fatigue Safeguards**: Intelligent throttling prevents notification spam during active focus sessions and late-night hours.
 
 ---
 
-### 🛡️ 9. Enterprise Resilience & Offline-First Architecture
+### <img src="https://api.iconify.design/lucide:shield-check.svg?color=%2310B981&width=20&height=20" width="20" height="20" style="vertical-align: middle; margin-right: 6px;" /> 9. Enterprise Resilience & Offline-First Architecture
 
 Engineered for 99.9% availability, graceful degradation, and uninterrupted offline workflows.
 
@@ -256,12 +256,52 @@ Engineered for 99.9% availability, graceful degradation, and uninterrupted offli
 
 ---
 
-## 🏛️ System Architecture
+## <img src="https://api.iconify.design/lucide:layers.svg?color=%236366F1&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Technology Stack & Ecosystem
+
+Saarathi leverages a modern, full-stack reactive architecture designed for rapid cross-platform synchronization, asynchronous intelligence pipelines, and high fault tolerance.
+
+### <img src="https://api.iconify.design/lucide:layout.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Frontend & Cross-Platform Clients
+
+| Layer / Technology | Version / Spec | Purpose & Architectural Role |
+| :--- | :--- | :--- |
+| <img src="https://api.iconify.design/logos:react.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **React Native & Expo** | SDK 51+ / Expo Router | Cross-platform native mobile experience with file-based routing and native device bridge. |
+| <img src="https://api.iconify.design/logos:vitejs.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **React 18 & Vite** | Vite 5.x / React 18 | Desktop web application providing sub-second HMR and optimized production bundles. |
+| <img src="https://api.iconify.design/logos:tailwindcss-icon.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Tailwind CSS & NativeWind** | v3.4+ / NativeWind v4 | Unified utility-first styling system implementing sleek dark mode and glassmorphism. |
+| <img src="https://api.iconify.design/logos:typescript-icon.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **TypeScript** | v5.4+ | End-to-end type safety, shared interfaces, and structured data contracts across the monorepo. |
+| <img src="https://api.iconify.design/lucide:box.svg?color=%23EC4899&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Zustand** | v4.5+ | Ultra-lightweight reactive client state management with local persistence and offline hydration. |
+| <img src="https://api.iconify.design/lucide:activity.svg?color=%2310B981&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Victory Native / Reanimated** | v36+ / Reanimated 3 | High-performance 60fps gesture animations and interactive productivity telemetry charts. |
+
+---
+
+### <img src="https://api.iconify.design/lucide:server.svg?color=%23F59E0B&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Backend, AI Gateway & Microservices
+
+| Technology | Framework / Engine | Purpose & Architectural Role |
+| :--- | :--- | :--- |
+| <img src="https://api.iconify.design/logos:fastapi.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **FastAPI** | Python 3.11+ / Uvicorn | Asynchronous, high-concurrency REST gateway with automatic OpenAPI documentation. |
+| <img src="https://api.iconify.design/logos:pydantic.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Pydantic v2** | Rust-backed validation | Strict input sanitization, runtime schema validation, and JSON serialization. |
+| <img src="https://api.iconify.design/lucide:cpu.svg?color=%23EF4444&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Groq LLaMA 3.3 70B** | LPUs / Inference Engine | Natural language understanding, conversational planning, and structured tool calling. |
+| <img src="https://api.iconify.design/lucide:mic-2.svg?color=%238B5CF6&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Deepgram Nova-2** | Streaming STT & TTS | Low-latency speech recognition and voice synthesis for real-time voice conversations. |
+
+---
+
+### <img src="https://api.iconify.design/lucide:brain.svg?color=%23EC4899&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Machine Learning, Data & Vector Infrastructure
+
+| Component | Library / Service | Purpose & Architectural Role |
+| :--- | :--- | :--- |
+| <img src="https://api.iconify.design/logos:python.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Scikit-Learn & XGBoost** | Scikit-Learn 1.4+ / XGBoost | Behavioral classifiers for procrastination prediction and K-Means energy clustering. |
+| <img src="https://api.iconify.design/lucide:search.svg?color=%233B82F6&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Sentence Transformers** | `all-MiniLM-L6-v2` | Dense vector embedding generation for semantic memory indexing and document similarity. |
+| <img src="https://api.iconify.design/logos:supabase-icon.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Supabase & PGVector** | PostgreSQL + pgvector | High-dimensional vector storage and cosine distance similarity search queries. |
+| <img src="https://api.iconify.design/logos:firebase.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Firebase Suite** | Firestore & Firebase Auth | Real-time multi-device document synchronization and secure identity authentication. |
+| <img src="https://api.iconify.design/logos:docker-icon.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Docker & Compose** | Container Runtime | Reproducible containerized environments for backend services, tests, and CI/CD pipelines. |
+
+---
+
+## <img src="https://api.iconify.design/lucide:network.svg?color=%233B82F6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> System Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   CLIENT ECOSYSTEM                                     │
-│     📱 React Native (Expo / iOS / Android)        💻 Vite + React.js Web Dashboard     │
+│     [React Native Mobile Client]                 [Vite + React 18 Web Dashboard]       │
 └───────────────────────────────────────────┬────────────────────────────────────────────┘
                                             │
                        Firebase Auth & Realtime Sync Engine
@@ -289,22 +329,7 @@ Engineered for 99.9% availability, graceful degradation, and uninterrupted offli
 
 ---
 
-## 🛠️ Tech Stack
-
-| Domain | Technologies | Purpose |
-| :--- | :--- | :--- |
-| **Mobile Client** | React Native, Expo, Expo Router, Reanimated | Cross-platform native mobile experience (iOS/Android) |
-| **Web Client** | React 18, Vite, Tailwind CSS, Lucide Icons | High-performance desktop and browser workstation |
-| **State & API** | Zustand, TypeScript, Axios, WebSocket | Reactive state management & synchronized offline store |
-| **Backend Gateway** | Python 3.11+, FastAPI, Uvicorn, Pydantic v2 | High-throughput asynchronous REST & WebSocket microservices |
-| **AI & LLM** | Groq API (`llama-3.3-70b-versatile`), Deepgram Nova-2 | High-speed inference, conversational reasoning, and voice I/O |
-| **Machine Learning** | XGBoost, Scikit-Learn, Pandas, NumPy, SHAP | Procrastination risk prediction & behavioral telemetry clustering |
-| **Vector Search** | Supabase (`pgvector`), Sentence-Transformers | Semantic memory vault & dense context similarity matching |
-| **Data & Auth** | Google Firebase Authentication, Cloud Firestore | Realtime operational documents and identity management |
-
----
-
-## 📂 Monorepo Structure
+## <img src="https://api.iconify.design/lucide:folder-tree.svg?color=%238B5CF6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Monorepo Structure
 
 ```text
 Saarathi/
@@ -331,9 +356,9 @@ Saarathi/
 
 ---
 
-## 🚀 Getting Started
+## <img src="https://api.iconify.design/lucide:rocket.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Getting Started
 
-### 📋 Prerequisites
+### <img src="https://api.iconify.design/lucide:clipboard-check.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Prerequisites
 
 Ensure the following tools are installed on your machine:
 * **Node.js**: `v18.x` or higher
@@ -343,7 +368,7 @@ Ensure the following tools are installed on your machine:
 
 ---
 
-### 📥 1. Clone the Repository
+### <img src="https://api.iconify.design/lucide:git-branch.svg?color=%236366F1&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Clone the Repository
 
 ```bash
 git clone https://github.com/siddharthg-7/Saarathi.git
@@ -352,7 +377,7 @@ cd Saarathi
 
 ---
 
-### 📦 2. Install Monorepo Dependencies
+### <img src="https://api.iconify.design/lucide:package.svg?color=%23F59E0B&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Install Monorepo Dependencies
 
 ```bash
 # Install root, workspace packages, web, and mobile dependencies
@@ -361,7 +386,7 @@ npm install
 
 ---
 
-### ⚙️ 3. Environment Configuration
+### <img src="https://api.iconify.design/lucide:sliders.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 3. Environment Configuration
 
 Create `.env` files in each sub-application using the corresponding templates:
 
@@ -393,7 +418,7 @@ EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
 
 ---
 
-### 💻 4. Run Development Servers
+### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Run Development Servers
 
 Open separate terminal tabs or run them concurrently:
 
@@ -422,7 +447,7 @@ npx expo start
 
 ---
 
-## 🧪 Testing & Validation
+## <img src="https://api.iconify.design/lucide:flask-conical.svg?color=%23EC4899&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Testing & Quality Assurance
 
 Execute test suites across the ecosystem to verify resilience and model stability:
 
@@ -437,12 +462,12 @@ npm run lint
 
 ---
 
-## 📄 License
+## <img src="https://api.iconify.design/lucide:scale.svg?color=%2364748B&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> License
 
 This project is licensed under the **MIT License** — see the [LICENSE](file:///c:/project-self-1/Saarathi/LICENSE) file for details.
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for peak human focus and autonomous productivity.</sub>
+  <sub>Built with <img src="https://api.iconify.design/lucide:heart.svg?color=%23EF4444&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> for peak human focus and autonomous productivity.</sub>
 </div>
