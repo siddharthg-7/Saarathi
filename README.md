@@ -45,23 +45,6 @@ At the core of the ecosystem is **Kairo** — a calm, context-aware AI assistant
 | <img src="https://api.iconify.design/lucide:smartphone.svg?color=%2310B981&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **Mobile App (Expo)** | [![Expo Preview](https://img.shields.io/badge/Preview-Expo_Go_Project-000000?style=flat-square&logo=expo&logoColor=white)](https://expo.dev/@your-org/saarathi) | Interactive cross-platform mobile client (iOS / Android) |
 | <img src="https://api.iconify.design/lucide:file-code.svg?color=%23009688&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> **API Docs (Swagger)** | [![FastAPI Docs](https://img.shields.io/badge/Explore-Swagger_UI-009688?style=flat-square&logo=fastapi&logoColor=white)](http://localhost:8000/docs) | Interactive OpenAPI specifications and endpoints |
 
-### <img src="https://api.iconify.design/lucide:image.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Visual Previews
-
-```
-┌──────────────────────────────────────────────┐  ┌──────────────────────────────────────────────┐
-│             Web Analytics & Tasks            │  │          Kairo AI Assistant & Voice          │
-│                                              │  │                                              │
-│      [ Place Web Dashboard Screenshot ]      │  │     [ Place Kairo Voice Modal Screenshot ]   │
-│                                              │  │                                              │
-└──────────────────────────────────────────────┘  └──────────────────────────────────────────────┘
-┌──────────────────────────────────────────────┐  ┌──────────────────────────────────────────────┐
-│           Predictive ML & Energy Curve       │  │             Mobile Focus Experience          │
-│                                              │  │                                              │
-│     [ Place ML Procrastination Graph ]       │  │        [ Place Mobile App Screenshot ]       │
-│                                              │  │                                              │
-└──────────────────────────────────────────────┘  └──────────────────────────────────────────────┘
-```
-
 ---
 
 ## <img src="https://api.iconify.design/lucide:sparkles.svg?color=%23F59E0B&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Features & Deep-Dive
@@ -296,6 +279,173 @@ Saarathi leverages a modern, full-stack reactive architecture designed for rapid
 
 ---
 
+## <img src="https://api.iconify.design/lucide:image.svg?color=%233B82F6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Screenshots & Visual Showcase
+
+> High-resolution interface captures from the Saarathi web workstation and mobile client. Asset files are stored in `docs/assets/screenshots/`.
+
+| Web Application Dashboard | Kairo Voice & AI Assistant |
+| :---: | :---: |
+| <img src="./docs/assets/screenshots/web-dashboard.png" alt="Web Dashboard" width="100%" onerror="this.src='https://via.placeholder.com/800x450/0A0A0A/6366F1?text=Web+Dashboard+%26+Task+Matrix'" /> | <img src="./docs/assets/screenshots/kairo-voice-modal.png" alt="Kairo Voice Modal" width="100%" onerror="this.src='https://via.placeholder.com/800x450/0A0A0A/8B5CF6?text=Kairo+Voice+Assistant'" /> |
+| *Multi-dimensional task matrix, Kanban board & dynamic Today view* | *Low-latency voice interaction, contextual planning & tool execution* |
+
+| Predictive ML & XAI Analytics | Voice Brain Dump Studio |
+| :---: | :---: |
+| <img src="./docs/assets/screenshots/ml-analytics.png" alt="ML Analytics" width="100%" onerror="this.src='https://via.placeholder.com/800x450/0A0A0A/EC4899?text=Predictive+ML+%26+Energy+Clustering'" /> | <img src="./docs/assets/screenshots/brain-dump-studio.png" alt="Brain Dump Studio" width="100%" onerror="this.src='https://via.placeholder.com/800x450/0A0A0A/F59E0B?text=Voice+Brain+Dump+Pipeline'" /> |
+| *Procrastination risk forecasting, 24h energy curves & SHAP factor insights* | *Stream-of-consciousness audio capture & automatic atomic task breakdown* |
+
+| Mobile Focus Room & Flow Timer | Habit Momentum & Consistency Heatmap |
+| :---: | :---: |
+| <img src="./docs/assets/screenshots/mobile-focus-room.png" alt="Mobile Focus Room" width="100%" onerror="this.src='https://via.placeholder.com/800x450/0A0A0A/10B981?text=Zen+Focus+Room'" /> | <img src="./docs/assets/screenshots/habit-heatmaps.png" alt="Habit Heatmaps" width="100%" onerror="this.src='https://via.placeholder.com/800x450/0A0A0A/06B6D4?text=Habit+Consistency+OS'" /> |
+| *Distraction-free Pomodoro session with ambient soundscapes* | *GitHub-style consistency heatmaps, streak trackers & velocity metrics* |
+
+---
+
+## <img src="https://api.iconify.design/lucide:download.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Installation & Setup Guide
+
+Follow the step-by-step instructions below to configure and run the entire Saarathi monorepo locally.
+
+### <img src="https://api.iconify.design/lucide:clipboard-check.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Prerequisites
+
+Ensure your development environment meets the following specifications:
+
+| Requirement | Minimum Version | Installation / Reference |
+| :--- | :--- | :--- |
+| **Node.js** | `v18.18.0` or `v20.x` | [nodejs.org](https://nodejs.org/) |
+| **npm** / **pnpm** | `v9.x` or higher | Included with Node.js (`npm install -g npm`) |
+| **Python** | `v3.10` or `v3.11` | [python.org](https://python.org/) |
+| **Git** | `v2.40+` | [git-scm.com](https://git-scm.com/) |
+| **Expo CLI** (Optional) | Latest | `npm install -g expo-cli` |
+| **Docker & Compose** (Optional) | `v24+` | [docker.com](https://docker.com/) |
+
+---
+
+### <img src="https://api.iconify.design/lucide:git-branch.svg?color=%236366F1&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Clone the Repository
+
+```bash
+git clone https://github.com/siddharthg-7/Saarathi.git
+cd Saarathi
+```
+
+---
+
+### <img src="https://api.iconify.design/lucide:package.svg?color=%23F59E0B&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 3. Install Monorepo Dependencies
+
+Install workspace dependencies for the root, web dashboard, mobile application, and shared TypeScript packages:
+
+```bash
+# Install all JavaScript / TypeScript workspace dependencies
+npm install
+```
+
+---
+
+### <img src="https://api.iconify.design/lucide:sliders.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Environment Variables Configuration
+
+Saarathi requires environment variables configured for each service. Create the respective `.env` files based on the templates below:
+
+#### <img src="https://api.iconify.design/logos:fastapi.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> Backend Gateway (`backend/.env`):
+```env
+# Server Configuration
+ENVIRONMENT=development
+PORT=8000
+HOST=0.0.0.0
+
+# AI & Voice Pipeline API Keys
+GROQ_API_KEY=gsk_your_groq_api_key_here
+DEEPGRAM_API_KEY=your_deepgram_api_key_here
+
+# Vector Database (Supabase PGVector)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# Firebase Admin SDK Credentials
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
+```
+
+#### <img src="https://api.iconify.design/logos:vitejs.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> Web Client (`apps/web/.env`):
+```env
+VITE_API_URL=http://localhost:8000
+VITE_FIREBASE_API_KEY=AIzaSyYourFirebaseWebApiKey
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-firebase-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
+VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
+```
+
+#### <img src="https://api.iconify.design/logos:react.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> Mobile Client (`apps/mobile/.env`):
+```env
+EXPO_PUBLIC_API_URL=http://localhost:8000
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyYourFirebaseMobileApiKey
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project-id
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+```
+
+---
+
+### <img src="https://api.iconify.design/lucide:database.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Database & PGVector Schema Setup
+
+1. **Firestore Rules & Indexes**:
+   Deploy Firestore security rules and composite indexes to your Firebase project:
+   ```bash
+   npx firebase deploy --only firestore:rules,firestore:indexes
+   ```
+2. **Supabase PGVector Migration**:
+   Execute the migration script in `supabase/migrations/` inside your Supabase SQL Editor to enable `pgvector` and initialize the embeddings table:
+   ```sql
+   create extension if not exists vector;
+   ```
+
+---
+
+### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 6. Launch Development Services
+
+Open separate terminal windows or run services concurrently:
+
+#### Terminal 1 — Start Python AI Backend Gateway:
+```bash
+cd backend
+python -m venv .venv
+
+# Activate virtual environment:
+# On Windows:
+.venv\Scripts\activate
+# On Linux/macOS:
+source .venv/bin/activate
+
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+> API Gateway active at: **`http://localhost:8000`** | Swagger Docs at: **`http://localhost:8000/docs`**
+
+#### Terminal 2 — Start Web Dashboard:
+```bash
+cd apps/web
+npm run dev
+```
+> Web Dashboard active at: **`http://localhost:5173`**
+
+#### Terminal 3 — Start Mobile Application (Expo):
+```bash
+cd apps/mobile
+npx expo start
+```
+> Press **`a`** for Android Emulator, **`i`** for iOS Simulator, or scan the QR code using the **Expo Go** app on your physical device.
+
+---
+
+### <img src="https://api.iconify.design/logos:docker-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 7. Docker Containerized Setup (Alternative)
+
+To spin up the backend gateway and containerized services using Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+---
+
 ## <img src="https://api.iconify.design/lucide:network.svg?color=%233B82F6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> System Architecture
 
 ```
@@ -352,97 +502,6 @@ Saarathi/
 │   └── types/              # Unified TypeScript interfaces & data contracts
 ├── supabase/               # PGVector database migrations & schema definitions
 └── README.md
-```
-
----
-
-## <img src="https://api.iconify.design/lucide:rocket.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Getting Started
-
-### <img src="https://api.iconify.design/lucide:clipboard-check.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Prerequisites
-
-Ensure the following tools are installed on your machine:
-* **Node.js**: `v18.x` or higher
-* **Python**: `v3.10` or higher
-* **npm** / **yarn** / **pnpm**
-* **Git**
-
----
-
-### <img src="https://api.iconify.design/lucide:git-branch.svg?color=%236366F1&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Clone the Repository
-
-```bash
-git clone https://github.com/siddharthg-7/Saarathi.git
-cd Saarathi
-```
-
----
-
-### <img src="https://api.iconify.design/lucide:package.svg?color=%23F59E0B&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Install Monorepo Dependencies
-
-```bash
-# Install root, workspace packages, web, and mobile dependencies
-npm install
-```
-
----
-
-### <img src="https://api.iconify.design/lucide:sliders.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 3. Environment Configuration
-
-Create `.env` files in each sub-application using the corresponding templates:
-
-#### Backend (`backend/.env`):
-```env
-ENVIRONMENT=development
-PORT=8000
-GROQ_API_KEY=your_groq_api_key
-DEEPGRAM_API_KEY=your_deepgram_api_key
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-FIREBASE_PROJECT_ID=your_firebase_project_id
-```
-
-#### Web Dashboard (`apps/web/.env`):
-```env
-VITE_API_URL=http://localhost:8000
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
-```
-
-#### Mobile App (`apps/mobile/.env`):
-```env
-EXPO_PUBLIC_API_URL=http://localhost:8000
-EXPO_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
-```
-
----
-
-### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Run Development Servers
-
-Open separate terminal tabs or run them concurrently:
-
-#### Start Python AI Backend Gateway:
-```bash
-cd backend
-python -m venv .venv
-# Activate: source .venv/bin/activate (Linux/Mac) or .venv\Scripts\activate (Windows)
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-#### Start Web Application:
-```bash
-cd apps/web
-npm run dev
-# Web app running at http://localhost:5173
-```
-
-#### Start Mobile App (Expo):
-```bash
-cd apps/mobile
-npx expo start
-# Scan QR code using Expo Go app on iOS or Android
 ```
 
 ---
