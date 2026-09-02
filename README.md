@@ -339,53 +339,7 @@ npm install
 
 ---
 
-### <img src="https://api.iconify.design/lucide:sliders.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Environment Variables Configuration
-
-Saarathi requires environment variables configured for each service. Create the respective `.env` files based on the templates below:
-
-#### <img src="https://api.iconify.design/logos:fastapi.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> Backend Gateway (`backend/.env`):
-```env
-# Server Configuration
-ENVIRONMENT=development
-PORT=8000
-HOST=0.0.0.0
-
-# AI & Voice Pipeline API Keys
-GROQ_API_KEY=gsk_your_groq_api_key_here
-DEEPGRAM_API_KEY=your_deepgram_api_key_here
-
-# Vector Database (Supabase PGVector)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
-
-# Firebase Admin SDK Credentials
-FIREBASE_PROJECT_ID=your-firebase-project-id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk@your-project.iam.gserviceaccount.com
-```
-
-#### <img src="https://api.iconify.design/logos:vitejs.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> Web Client (`apps/web/.env`):
-```env
-VITE_API_URL=http://localhost:8000
-VITE_FIREBASE_API_KEY=AIzaSyYourFirebaseWebApiKey
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-firebase-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
-VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
-```
-
-#### <img src="https://api.iconify.design/logos:react.svg?width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 4px;" /> Mobile Client (`apps/mobile/.env`):
-```env
-EXPO_PUBLIC_API_URL=http://localhost:8000
-EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyYourFirebaseMobileApiKey
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-firebase-project-id
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-```
-
----
-
-### <img src="https://api.iconify.design/lucide:database.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Database & PGVector Schema Setup
+### <img src="https://api.iconify.design/lucide:database.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Database & PGVector Schema Setup
 
 1. **Firestore Rules & Indexes**:
    Deploy Firestore security rules and composite indexes to your Firebase project:
@@ -400,7 +354,7 @@ EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 
 ---
 
-### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 6. Launch Development Services
+### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Launch Development Services
 
 Open separate terminal windows or run services concurrently:
 
@@ -436,13 +390,144 @@ npx expo start
 
 ---
 
-### <img src="https://api.iconify.design/logos:docker-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 7. Docker Containerized Setup (Alternative)
+### <img src="https://api.iconify.design/logos:docker-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 6. Docker Containerized Setup (Alternative)
 
 To spin up the backend gateway and containerized services using Docker Compose:
 
 ```bash
 docker compose up --build
 ```
+
+---
+
+## <img src="https://api.iconify.design/lucide:key-round.svg?color=%2306B6D4&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Environment Variables & Secrets Reference
+
+Saarathi strictly enforces a multi-tier security model classifying configuration into **Server Secrets**, **Server Config**, and **Public Client Config**.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                ENVIRONMENT SECURITY TIERS                              │
+│                                                                                        │
+│   [Server Secrets] (Never Exposed): GROQ_API_KEY, DEEPGRAM_API_KEY, SUPABASE_SECRET   │
+│   [Server Config]  (Host/Port/CORS): ENVIRONMENT, PORT, CORS_ALLOWED_ORIGINS           │
+│   [Client Config]  (App Bundled):   VITE_FIREBASE_*, EXPO_PUBLIC_FIREBASE_*           │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### <img src="https://api.iconify.design/logos:fastapi.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Backend Gateway (`backend/.env`)
+
+Create `backend/.env` (or copy from `.env.example` in repository root):
+
+```env
+# Server Runtime
+ENVIRONMENT=development
+PORT=8000
+HOST=0.0.0.0
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:8081
+
+# AI Orchestration & Voice Services
+GROQ_API_KEY=gsk_your_groq_api_key_here
+DEEPGRAM_API_KEY=your_deepgram_api_key_here
+GEMINI_API_KEY=AIzaSy_optional_gemini_key
+
+# Supabase Vector Memory Vault
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# Firebase Admin SDK Authentication
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CREDENTIALS_JSON={"type":"service_account","project_id":"..."}
+
+# Administrative Access & Caching
+ADMIN_EMAILS=admin@saarathi.app
+ADMIN_UIDS=admin_saarathi_root
+REDIS_URL=redis://default:password@localhost:6379
+```
+
+| Variable Name | Type | Classification | Default / Example | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `GROQ_API_KEY` | `string` | **Server Secret** *(Required)* | `gsk_...` | API key for Groq Cloud running LLaMA 3.3 70B inference for Kairo AI. |
+| `DEEPGRAM_API_KEY` | `string` | **Server Secret** *(Required)* | `...` | API key for Deepgram Nova-2 streaming Speech-to-Text & Text-to-Speech. |
+| `GEMINI_API_KEY` | `string` | **Server Secret** *(Optional)* | `AIzaSy...` | Fallback multimodal LLM and audio transcription engine. |
+| `SUPABASE_URL` | `string` | **Server Config** *(Required)* | `https://xyz.supabase.co` | Supabase project URL hosting the PostgreSQL database with `pgvector`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | `string` | **Server Secret** *(Required)* | `eyJhbGciOi...` | Supabase Service Role key used for vector embedding storage & similarity search. |
+| `FIREBASE_PROJECT_ID` | `string` | **Public Config** *(Required)* | `saarathi-os` | Google Firebase Project ID for Firestore and Authentication verification. |
+| `FIREBASE_CREDENTIALS_JSON` | `json_string` | **Server Secret** *(Required)* | `{"type":"service_account",...}` | Raw JSON content of the Firebase Admin Service Account key for cloud deployments. |
+| `GOOGLE_APPLICATION_CREDENTIALS` | `filepath` | **Server Secret** *(Alternative)* | `path/to/serviceAccountKey.json` | Local file path to Firebase Admin Service Account key (alternative to JSON string). |
+| `ENVIRONMENT` | `string` | **Server Config** | `development` | Runtime environment mode (`development`, `staging`, or `production`). |
+| `PORT` | `integer` | **Server Config** | `8000` | Port on which the FastAPI Uvicorn server listens. |
+| `HOST` | `string` | **Server Config** | `0.0.0.0` | Host IP binding address for the FastAPI backend gateway. |
+| `CORS_ALLOWED_ORIGINS` | `csv_string` | **Server Config** | `http://localhost:5173,http://localhost:3000` | Comma-separated allowed CORS origins for web and mobile clients. |
+| `ADMIN_EMAILS` | `csv_string` | **Server Config** | `admin@saarathi.app` | Comma-separated list of administrative email addresses for elevated permissions. |
+| `ADMIN_UIDS` | `csv_string` | **Server Config** | `admin-uid-1,admin-uid-2` | Comma-separated list of Firebase UIDs granted superuser roles. |
+| `REDIS_URL` | `string` | **Server Config** *(Optional)* | `redis://default:pass@host:6379` | Redis connection URL for distributed task queuing and telemetry caching. |
+
+---
+
+### <img src="https://api.iconify.design/logos:vitejs.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Web Application (`apps/web/.env`)
+
+Create `apps/web/.env` (or copy from `apps/web/.env.example`):
+
+```env
+# Backend API Gateway URL
+VITE_API_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000/v1
+
+# Firebase Client Web SDK
+VITE_FIREBASE_API_KEY=AIzaSyYourFirebaseWebApiKey
+VITE_FIREBASE_AUTH_DOMAIN=saarathi-os.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=saarathi-os
+VITE_FIREBASE_STORAGE_BUCKET=saarathi-os.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789012
+VITE_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
+
+# App Configuration
+VITE_APP_NAME=Saarathi OS
+VITE_ENABLE_MOCK_FALLBACK=true
+```
+
+| Variable Name | Type | Classification | Default / Example | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `VITE_API_URL` | `string` | **Public Client** *(Required)* | `http://localhost:8000` | Base URL pointing to the FastAPI Python backend gateway. |
+| `VITE_API_BASE_URL` | `string` | **Public Client** *(Alternative)* | `http://localhost:8000/v1` | Versioned endpoint path for backend REST and WebSocket routes. |
+| `VITE_FIREBASE_API_KEY` | `string` | **Public Client** *(Required)* | `AIzaSy...` | Firebase Web API key for client-side authentication. |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `string` | **Public Client** *(Required)* | `saarathi-os.firebaseapp.com` | Firebase Authentication domain. |
+| `VITE_FIREBASE_PROJECT_ID` | `string` | **Public Client** *(Required)* | `saarathi-os` | Firebase Project ID matching the backend Firestore database. |
+| `VITE_FIREBASE_STORAGE_BUCKET`| `string` | **Public Client** *(Required)* | `saarathi-os.firebasestorage.app` | Firebase Storage bucket for audio uploads and user assets. |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `string` | **Public Client** *(Required)* | `123456789012` | Firebase Cloud Messaging (FCM) sender ID for web push notifications. |
+| `VITE_FIREBASE_APP_ID` | `string` | **Public Client** *(Required)* | `1:123456789012:web:...` | Firebase Web Application ID. |
+| `VITE_ENABLE_MOCK_FALLBACK` | `boolean` | **Public Client** | `true` | Enables offline heuristic mock simulation if backend gateway is unreachable. |
+
+---
+
+### <img src="https://api.iconify.design/logos:react.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 4px;" /> 3. Mobile Application (`apps/mobile/.env`)
+
+Create `apps/mobile/.env` (or copy from `apps/mobile/.env.example`):
+
+```env
+# Backend API Gateway URL (Use LAN IP for physical device testing)
+EXPO_PUBLIC_API_URL=http://localhost:8000
+
+# Firebase Client Mobile SDK
+EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSyYourFirebaseMobileApiKey
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=saarathi-os.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=saarathi-os
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=saarathi-os.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789012:android:abcdef123456
+```
+
+| Variable Name | Type | Classification | Default / Example | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `EXPO_PUBLIC_API_URL` | `string` | **Public Client** *(Required)* | `http://localhost:8000` | Backend API URL (use LAN IP `http://192.168.x.x:8000` when testing on physical devices). |
+| `EXPO_PUBLIC_FIREBASE_API_KEY` | `string` | **Public Client** *(Required)* | `AIzaSy...` | Firebase Mobile API key for iOS & Android native client. |
+| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | `string` | **Public Client** *(Required)* | `saarathi-os.firebaseapp.com` | Firebase Authentication domain for mobile OAuth flows. |
+| `EXPO_PUBLIC_FIREBASE_PROJECT_ID` | `string` | **Public Client** *(Required)* | `saarathi-os` | Firebase Project ID for mobile Firestore synchronization. |
+| `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`| `string` | **Public Client** *(Required)* | `saarathi-os.firebasestorage.app` | Firebase Storage bucket for mobile voice recordings. |
+| `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `string` | **Public Client** *(Required)* | `123456789012` | FCM / APNs sender ID for native mobile push notifications. |
+| `EXPO_PUBLIC_FIREBASE_APP_ID` | `string` | **Public Client** *(Required)* | `1:123456789012:android:...` | Firebase Mobile App ID. |
 
 ---
 
