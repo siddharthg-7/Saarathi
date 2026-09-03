@@ -302,7 +302,7 @@ Saarathi leverages a modern, full-stack reactive architecture designed for rapid
 
 ## <img src="https://api.iconify.design/lucide:download.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Installation & Setup Guide
 
-Follow the step-by-step instructions below to configure and run the entire Saarathi monorepo locally.
+Follow the step-by-step instructions below to configure and prepare the entire Saarathi monorepo.
 
 ### <img src="https://api.iconify.design/lucide:clipboard-check.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Prerequisites
 
@@ -354,43 +354,7 @@ npm install
 
 ---
 
-### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Launch Development Services
-
-Open separate terminal windows or run services concurrently:
-
-#### Terminal 1 — Start Python AI Backend Gateway:
-```bash
-cd backend
-python -m venv .venv
-
-# Activate virtual environment:
-# On Windows:
-.venv\Scripts\activate
-# On Linux/macOS:
-source .venv/bin/activate
-
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-> API Gateway active at: **`http://localhost:8000`** | Swagger Docs at: **`http://localhost:8000/docs`**
-
-#### Terminal 2 — Start Web Dashboard:
-```bash
-cd apps/web
-npm run dev
-```
-> Web Dashboard active at: **`http://localhost:5173`**
-
-#### Terminal 3 — Start Mobile Application (Expo):
-```bash
-cd apps/mobile
-npx expo start
-```
-> Press **`a`** for Android Emulator, **`i`** for iOS Simulator, or scan the QR code using the **Expo Go** app on your physical device.
-
----
-
-### <img src="https://api.iconify.design/logos:docker-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 6. Docker Containerized Setup (Alternative)
+### <img src="https://api.iconify.design/logos:docker-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Docker Containerized Setup (Alternative)
 
 To spin up the backend gateway and containerized services using Docker Compose:
 
@@ -528,6 +492,112 @@ EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789012:android:abcdef123456
 | `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`| `string` | **Public Client** *(Required)* | `saarathi-os.firebasestorage.app` | Firebase Storage bucket for mobile voice recordings. |
 | `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | `string` | **Public Client** *(Required)* | `123456789012` | FCM / APNs sender ID for native mobile push notifications. |
 | `EXPO_PUBLIC_FIREBASE_APP_ID` | `string` | **Public Client** *(Required)* | `1:123456789012:android:...` | Firebase Mobile App ID. |
+
+---
+
+## <img src="https://api.iconify.design/lucide:play.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Running Locally
+
+Once dependencies and environment files are initialized, you can launch each layer of the Saarathi operating system using root monorepo scripts or individual service runners.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                LOCAL DEVELOPMENT SERVICES                              │
+│                                                                                        │
+│   [FastAPI Backend]    http://localhost:8000       Interactive Docs: /docs             │
+│   [Vite Web Dashboard] http://localhost:5173       HMR Hot-Reload Enabled              │
+│   [Expo Mobile App]    http://localhost:8081       Metro Bundler (iOS/Android)         │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### <img src="https://api.iconify.design/lucide:terminal.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Quickstart Commands (Monorepo Root)
+
+You can launch any service directly from the root workspace directory:
+
+| Service | Root Command | Target Workspace | Port / URL |
+| :--- | :--- | :--- | :--- |
+| **Python Backend** | `npm run backend` | `backend/` | `http://localhost:8000` |
+| **Web Dashboard** | `npm run dev` | `apps/web/` | `http://localhost:5173` |
+| **Mobile Client** | `npm run mobile` | `apps/mobile/` | `http://localhost:8081` |
+| **Mobile (Clear Cache)** | `npm run mobile:clear` | `apps/mobile/` | `http://localhost:8081` |
+
+---
+
+### <img src="https://api.iconify.design/logos:fastapi.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Start Python AI Backend Gateway
+
+Navigate to the `backend/` folder, activate the Python virtual environment, and launch the Uvicorn server:
+
+```bash
+cd backend
+
+# 1. Activate Python Virtual Environment
+# Windows:
+.venv\Scripts\activate
+# macOS / Linux:
+source .venv/bin/activate
+
+# 2. Launch FastAPI with auto-reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+* **API Root**: [`http://localhost:8000`](http://localhost:8000)
+* **Swagger Interactive UI**: [`http://localhost:8000/docs`](http://localhost:8000/docs)
+* **ReDoc Documentation**: [`http://localhost:8000/redoc`](http://localhost:8000/redoc)
+* **System Health Check**: [`http://localhost:8000/v1/resilience/health`](http://localhost:8000/v1/resilience/health)
+
+---
+
+### <img src="https://api.iconify.design/logos:vitejs.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Start Web Application Dashboard
+
+Launch the Vite React 18 development server with Instant Hot Module Replacement (HMR):
+
+```bash
+cd apps/web
+npm run dev
+```
+
+* **Local Web Interface**: [`http://localhost:5173`](http://localhost:5173)
+* **Network Host Access**: Run `npm run dev -- --host` to expose the web dashboard to other devices on your local network.
+
+---
+
+### <img src="https://api.iconify.design/logos:react.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 3. Start Cross-Platform Mobile Client (Expo)
+
+Start the Expo Metro Bundler to develop on an emulator, simulator, or physical phone:
+
+```bash
+cd apps/mobile
+npx expo start
+```
+
+* **Android Emulator**: Press **`a`** in the terminal (requires Android Studio & running emulator).
+* **iOS Simulator**: Press **`i`** in the terminal (macOS only, requires Xcode).
+* **Physical Device (iOS & Android)**:
+  1. Install the **Expo Go** application from the App Store or Google Play Store.
+  2. Scan the QR code displayed in your terminal.
+  3. Ensure your phone and computer are on the same Wi-Fi network and `EXPO_PUBLIC_API_URL` points to your machine's local LAN IP (e.g., `http://192.168.1.100:8000`).
+
+---
+
+### <img src="https://api.iconify.design/lucide:shield-alert.svg?color=%23F59E0B&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Mock Fallback & Offline Development Mode
+
+If external AI API keys (Groq, Deepgram, or Supabase) are not immediately available:
+
+* Set `VITE_ENABLE_MOCK_FALLBACK=true` in `apps/web/.env`.
+* The client-side application will automatically simulate Kairo voice planning, ML task risk predictions, and habit tracking using deterministic local heuristic models, allowing frontend development without incurring cloud API costs.
+
+---
+
+### <img src="https://api.iconify.design/lucide:activity.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Verifying Local Health & Connectivity
+
+| Verification Step | Target URL / Probe | Expected Status / Output |
+| :--- | :--- | :--- |
+| **Backend API Gateway** | `GET http://localhost:8000/` | `{"status": "online", "version": "1.0.0"}` |
+| **Circuit Breaker Status** | `GET http://localhost:8000/v1/resilience/health` | `{"circuit_breakers": {"groq": "CLOSED", "deepgram": "CLOSED"}}` |
+| **Swagger UI** | `GET http://localhost:8000/docs` | Interactive OpenAPI dashboard loaded |
+| **Web Dashboard** | `GET http://localhost:5173/` | Saarathi OS dashboard UI rendered |
+| **WebSocket Stream** | `WS http://localhost:8000/v1/kairo/ws` | Connection established with heartbeat ping |
 
 ---
 
