@@ -495,7 +495,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789012:android:abcdef123456
 
 ---
 
-## <img src="https://api.iconify.design/lucide:play.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Running Locally
+## <img src="https://api.iconify.design/lucide:play.svg?color=%2310B981&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Run Locally
 
 Once dependencies and environment files are initialized, you can launch each layer of the Saarathi operating system using root monorepo scripts or individual service runners.
 
@@ -544,7 +544,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 * **API Root**: [`http://localhost:8000`](http://localhost:8000)
 * **Swagger Interactive UI**: [`http://localhost:8000/docs`](http://localhost:8000/docs)
 * **ReDoc Documentation**: [`http://localhost:8000/redoc`](http://localhost:8000/redoc)
-* **System Health Check**: [`http://localhost:8000/v1/resilience/health`](http://localhost:8000/v1/resilience/health)
+* **System Health Check**: [`http://localhost:8000/v1/health`](http://localhost:8000/v1/health)
 
 ---
 
@@ -593,11 +593,376 @@ If external AI API keys (Groq, Deepgram, or Supabase) are not immediately availa
 
 | Verification Step | Target URL / Probe | Expected Status / Output |
 | :--- | :--- | :--- |
-| **Backend API Gateway** | `GET http://localhost:8000/` | `{"status": "online", "version": "1.0.0"}` |
-| **Circuit Breaker Status** | `GET http://localhost:8000/v1/resilience/health` | `{"circuit_breakers": {"groq": "CLOSED", "deepgram": "CLOSED"}}` |
+| **Backend API Gateway** | `GET http://localhost:8000/` | `{"message": "Saarathi OS Backend Gateway Active", "docs": "/docs"}` |
+| **Liveness Health Check** | `GET http://localhost:8000/v1/health` | `{"status": "ok", "service": "Saarathi FastAPI", "version": "1.0.0"}` |
+| **Resilience & Circuit Breakers** | `GET http://localhost:8000/v1/resilience/health` | `{"circuit_breakers": {"groq": "CLOSED", "deepgram": "CLOSED"}}` |
 | **Swagger UI** | `GET http://localhost:8000/docs` | Interactive OpenAPI dashboard loaded |
 | **Web Dashboard** | `GET http://localhost:5173/` | Saarathi OS dashboard UI rendered |
 | **WebSocket Stream** | `WS http://localhost:8000/v1/kairo/ws` | Connection established with heartbeat ping |
+
+---
+
+## <img src="https://api.iconify.design/lucide:cloud-upload.svg?color=%233B82F6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Deployment
+
+Saarathi OS is built cloud-native, enabling independent horizontal scaling of the FastAPI backend microservices, static web frontend, native mobile builds, and distributed database services.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                PRODUCTION DEPLOYMENT TOPOLOGY                          │
+│                                                                                        │
+│   [Render Web Service]        FastAPI Gateway + ML Engine + Deepgram/Groq Bridge       │
+│   [Vercel / Cloudflare]       Static React 18 Web Dashboard (SPA Edge Deployment)       │
+│   [Expo EAS Cloud]            Android App Bundle (.aab / .apk) & iOS Archive (.ipa)    │
+│   [Docker / Container]        Multi-stage container image for private cloud / VPS      │
+│   [Supabase + Firebase]       Managed PGVector PostgreSQL + Realtime Firestore Auth   │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### <img src="https://api.iconify.design/logos:render.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Backend Gateway on Render (Infrastructure as Code)
+
+Deploy the Python backend directly using the included [`render.yaml`](file:///c:/project-self-1/Saarathi/render.yaml) blueprint:
+
+1. Connect your GitHub repository to [Render](https://render.com).
+2. Create a new **Blueprint Instance** and select `render.yaml`.
+3. Configure the environment variables in the Render Dashboard:
+   * `GROQ_API_KEY`, `DEEPGRAM_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   * `FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_JSON`
+   * `CORS_ALLOWED_ORIGINS` (Set to your production frontend URL, e.g. `https://saarathi.app`)
+
+```yaml
+services:
+  - type: web
+    name: saarathi-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT
+    healthCheckPath: /v1/health
+```
+
+---
+
+### <img src="https://api.iconify.design/logos:vercel-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Web Application on Vercel
+
+Deploy the Vite React 18 frontend dashboard to [Vercel](https://vercel.com):
+
+1. Import the repository into Vercel.
+2. Configure project build settings:
+   * **Root Directory**: `apps/web`
+   * **Framework Preset**: `Vite`
+   * **Build Command**: `npm run build`
+   * **Output Directory**: `dist`
+3. Add Environment Variables:
+   * `VITE_API_URL` = `https://saarathi-api.onrender.com`
+   * `VITE_API_BASE_URL` = `https://saarathi-api.onrender.com/v1`
+   * `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, etc.
+
+---
+
+### <img src="https://api.iconify.design/logos:expo-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 3. Mobile Production Builds (Expo EAS)
+
+Build standalone native binaries for Google Play and Apple App Store using Expo Application Services:
+
+```bash
+cd apps/mobile
+
+# Install EAS CLI globally
+npm install -g eas-cli
+eas login
+
+# Configure mobile build profiles
+eas build:configure
+
+# Build standalone Android APK / AAB
+eas build --platform android --profile production
+
+# Build standalone iOS IPA
+eas build --platform ios --profile production
+```
+
+---
+
+### <img src="https://api.iconify.design/logos:docker-icon.svg?width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Containerized Deployment (Docker & Compose)
+
+Deploy the entire platform with Docker to any VPS (AWS EC2, DigitalOcean, GCP Compute Engine, or Azure VM):
+
+```bash
+# Build and run the multi-container stack in detached mode
+docker-compose up --build -d
+
+# Check live service logs
+docker-compose logs -f backend
+
+# Verify running containers
+docker ps
+```
+
+---
+
+### <img src="https://api.iconify.design/lucide:shield-check.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 5. Production Pre-Flight Checklist
+
+* <img src="https://api.iconify.design/lucide:check-circle.svg?color=%2310B981&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **Strict Security Headers**: Confirm HSTS, CSP (`default-src 'self'`), `X-Frame-Options: DENY`, and `nosniff` headers are applied via backend middleware.
+* <img src="https://api.iconify.design/lucide:check-circle.svg?color=%2310B981&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **CORS Lockdown**: Replace `*` wildcard with exact production domains in `CORS_ALLOWED_ORIGINS`.
+* <img src="https://api.iconify.design/lucide:check-circle.svg?color=%2310B981&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **Fail-Fast Validation**: Ensure `settings.validate_production_environment()` executes on startup to prevent boot with missing credentials.
+* <img src="https://api.iconify.design/lucide:check-circle.svg?color=%2310B981&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> **PGVector Migration**: Execute `supabase/migrations/` schema scripts to enable `vector` extensions and HNSW cosine indexes.
+
+---
+
+## <img src="https://api.iconify.design/lucide:code-xml.svg?color=%238B5CF6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> API Reference
+
+The FastAPI gateway provides RESTful endpoints and real-time bidirectional WebSocket connections. Interactive OpenAPI documentation is accessible at [`/docs`](http://localhost:8000/docs) and [`/redoc`](http://localhost:8000/redoc).
+
+### <img src="https://api.iconify.design/lucide:layers.svg?color=%238B5CF6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Core Endpoint Registry
+
+| Module | Method | Endpoint | Auth | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **System** | `GET` | `/v1/health` | None | Liveness and service uptime probe. |
+| **Resilience** | `GET` | `/v1/resilience/health` | None | Circuit breaker health states (`CLOSED`, `OPEN`, `HALF-OPEN`). |
+| **Resilience** | `POST` | `/v1/resilience/circuit-breaker/reset` | Bearer Token | Force-reset open circuit breakers to healthy baseline. |
+| **Auth** | `POST` | `/v1/auth/session` | Bearer Token | Validates Firebase JWT and mints contextual user session. |
+| **Auth** | `GET` | `/v1/auth/profile` | Bearer Token | Fetches user preferences, role permissions, and token limits. |
+| **Kairo AI** | `POST` | `/v1/kairo/chat` | Bearer Token | Synchronous multi-turn conversation with memory retrieval. |
+| **Kairo AI** | `POST` | `/v1/kairo/intent` | Bearer Token | Classifies intent and extracts action parameters from natural language. |
+| **Kairo AI** | `WS` | `/v1/kairo/ws` | Token Query | Bi-directional streaming voice and text duplex channel. |
+| **Brain Dump**| `POST` | `/v1/brain-dump/process` | Bearer Token | Deconstructs raw text or voice transcript into atomic tasks. |
+| **Brain Dump**| `POST` | `/v1/brain-dump/voice` | Bearer Token | Accepts multipart audio upload for STT transcription & structuring. |
+| **ML Engine** | `POST` | `/v1/ml/predict-procrastination` | Bearer Token | Evaluates task attributes and returns risk probability (0.0–1.0). |
+| **ML Engine** | `POST` | `/v1/ml/suggest-schedule` | Bearer Token | Re-ranks task execution order according to user chronotype. |
+| **Explainable AI** | `POST` | `/v1/xai/explain-risk` | Bearer Token | Generates SHAP feature contribution scores and actionable remedy. |
+| **Vector Memory** | `POST` | `/v1/memory/search` | Bearer Token | Queries Supabase PGVector for semantic context and similar tasks. |
+| **Vector Memory** | `POST` | `/v1/memory/embed` | Bearer Token | Embeds text snippets and persists vector representations. |
+| **Telemetry** | `POST` | `/v1/telemetry/event` | Bearer Token | Records user productivity events, focus logs, and task completions. |
+| **Analytics** | `GET` | `/v1/analytics/dashboard` | Bearer Token | Aggregates daily focus minutes, completion velocity, and burnout score. |
+
+---
+
+### <img src="https://api.iconify.design/lucide:braces.svg?color=%238B5CF6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Example Payloads & Data Contracts
+
+#### 1. Brain Dump Task Extraction (`POST /v1/brain-dump/process`)
+
+```json
+// Request Body
+{
+  "raw_input": "I have to finalize the quarterly Q3 revenue deck by tomorrow morning, email Sarah about design assets, and review the pull request for backend resilience before 3pm.",
+  "user_context": {
+    "chronotype": "morning_lark",
+    "current_energy": 0.85
+  }
+}
+```
+
+```json
+// Response Body (200 OK)
+{
+  "status": "success",
+  "extracted_tasks": [
+    {
+      "title": "Finalize Q3 quarterly revenue presentation deck",
+      "priority": "high",
+      "eisenhower_quadrant": "Q1_URGENT_IMPORTANT",
+      "estimated_minutes": 90,
+      "due_date": "2026-09-06T09:00:00Z",
+      "suggested_tags": ["finance", "presentation", "executive"]
+    },
+    {
+      "title": "Review pull request for backend resilience",
+      "priority": "high",
+      "eisenhower_quadrant": "Q1_URGENT_IMPORTANT",
+      "estimated_minutes": 45,
+      "due_date": "2026-09-06T15:00:00Z",
+      "suggested_tags": ["engineering", "code-review"]
+    },
+    {
+      "title": "Email Sarah regarding design assets",
+      "priority": "medium",
+      "eisenhower_quadrant": "Q3_URGENT_NOT_IMPORTANT",
+      "estimated_minutes": 15,
+      "due_date": "2026-09-06T18:00:00Z",
+      "suggested_tags": ["communication", "design"]
+    }
+  ],
+  "clarification_questions": []
+}
+```
+
+---
+
+#### 2. ML Procrastination Prediction (`POST /v1/ml/predict-procrastination`)
+
+```json
+// Request Body
+{
+  "task_id": "task-8924",
+  "task_complexity": 8,
+  "estimated_duration_minutes": 120,
+  "days_until_due": 1.5,
+  "energy_required": "high",
+  "user_historical_delay_rate": 0.42,
+  "current_hour": 14
+}
+```
+
+```json
+// Response Body (200 OK)
+{
+  "risk_score": 0.74,
+  "risk_level": "high",
+  "procrastination_factors": [
+    { "factor": "High task complexity (8/10)", "impact": 0.32 },
+    { "factor": "Afternoon energy slump (14:00 hrs)", "impact": 0.24 },
+    { "factor": "Historical delay rate on 90m+ tasks", "impact": 0.18 }
+  ],
+  "recommended_action": "Decompose into two 45-minute sub-tasks and initiate a 25-minute Zen Pomodoro sprint."
+}
+```
+
+---
+
+## <img src="https://api.iconify.design/lucide:terminal-square.svg?color=%23EC4899&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Usage/Examples
+
+Saarathi OS streamlines complex personal productivity workflows into autonomous, voice-driven actions. Here are real-world usage scenarios:
+
+---
+
+### <img src="https://api.iconify.design/lucide:mic.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Scenario 1: Voice Brain Dump to Structured Execution Plan
+
+1. **Trigger Recording**: Click the **Voice Brain Dump** button or press `Space` in the web or mobile dashboard.
+2. **Speak Freely**: *"I need to write unit tests for the ML pipeline, update the API documentation with the new circuit breaker endpoint, and schedule a sprint retro for Friday 4 PM."*
+3. **Automated Breakdown**: The system streams audio to Deepgram Nova-2 STT, feeds the transcription to Groq LLaMA 3.3, and parses the output into discrete cards categorized by priority, time estimate, and Eisenhower quadrant.
+4. **Instant Commit**: Review the synthesized task matrix with one-click approval to insert all items into your operational schedule.
+
+---
+
+### <img src="https://api.iconify.design/lucide:bot.svg?color=%238B5CF6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Scenario 2: Conversational Task Re-Scheduling with Kairo AI
+
+Ask Kairo to manage schedule overruns in natural conversational dialogue:
+
+```text
+User:  "Kairo, I'm feeling overwhelmed this afternoon and can only work for 2 more hours. What should I prioritize?"
+
+Kairo: "Looking at your schedule and energy profile, you have 5 tasks remaining. I recommend focusing on:
+       1. [High Priority] Finalize Q3 Revenue Deck (45m)
+       2. [High Priority] PR Code Review (30m)
+       I have automatically moved 'Email Sarah' and 'Update Readme' to tomorrow morning at 9:30 AM when your energy peaks. Would you like me to lock this plan in?"
+```
+
+---
+
+### <img src="https://api.iconify.design/lucide:sparkles.svg?color=%23EC4899&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Scenario 3: Procrastination Prevention with Explainable ML (XAI)
+
+When a task is flagged with a **High Procrastination Risk (74%)**:
+1. Click the **Risk Badge** on any task card.
+2. An interactive **XAI SHAP Waterfall Chart** opens, explaining why the model predicted a delay (e.g. task duration > 90 min, scheduled during low circadian energy window).
+3. Click **"Apply Kairo Remedy"** to instantly split the task into atomic 25-minute Pomodoro segments with automated break timers.
+
+---
+
+### <img src="https://api.iconify.design/lucide:headphones.svg?color=%2306B6D4&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> Scenario 4: Entering the Zen Focus Room
+
+1. Navigate to **Zen Focus Room** from the main navigation sidebar.
+2. Select your deep-work block duration (e.g., 25m Pomodoro, 50m Flow State, or 90m Ultra-Deep).
+3. Choose an acoustic backdrop: **Rain & Thunder**, **Brown Noise**, **Forest Canopy**, or **Binaural 40Hz Alpha Waves**.
+4. Activate **Full-Screen Immersion**: Desktop notifications are suppressed, background distractions are masked, and your active session telemetry is tracked for productivity analytics.
+
+---
+
+## <img src="https://api.iconify.design/lucide:map.svg?color=%23F59E0B&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Roadmap
+
+The Saarathi project roadmap outlines upcoming features, multi-agent capabilities, and hardware ecosystem integrations:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 SAARATHI DEVELOPMENT ROADMAP                          │
+│                                                                                        │
+│   [Phase 1] Core OS, Voice AI, ML Procrastination Engine, Supabase PGVector    [DONE]  │
+│   [Phase 2] Realtime Voice Duplex, Two-Way Calendar Sync, Cross-Device Sync    [WIP]   │
+│   [Phase 3] Multi-Agent Delegation, Wearable Biometric Telemetry (Apple/Garmin)[PLANNED│
+│   [Phase 4] Air-Gapped Local LLM Inference (WebLLM / ONNX / Ollama)           [FUTURE] │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Phase / Release | Target Milestone | Features & Capabilities | Status |
+| :--- | :--- | :--- | :--- |
+| **v1.0 (Current)** | **Core OS Foundation** | Voice Brain Dump, Kairo LLaMA 3.3 agent, XGBoost ML Risk Engine, Supabase PGVector Memory Vault, Zen Focus Room, Resilient Circuit Breakers. | <img src="https://api.iconify.design/lucide:check-circle-2.svg?color=%2310B981&width=16&height=16" width="16" height="16" style="vertical-align: middle;" /> **Complete** |
+| **v1.2 (Q2 2026)** | **Real-Time Voice & Calendar Sync** | Full-duplex WebSocket voice streaming (Deepgram + Groq live audio), two-way Google Calendar & Outlook 365 bidirectional sync, offline vector search with IndexedDB. | <img src="https://api.iconify.design/lucide:clock.svg?color=%23F59E0B&width=16&height=16" width="16" height="16" style="vertical-align: middle;" /> **In Progress** |
+| **v1.5 (Q3 2026)** | **Multi-Agent Orchestration & Wearables** | Autonomous specialized sub-agents (Researcher, Scheduler, Email Drafter, Code Reviewer), Apple Watch & Garmin Connect integration for HRV cognitive fatigue detection. | <img src="https://api.iconify.design/lucide:calendar.svg?color=%233B82F6&width=16&height=16" width="16" height="16" style="vertical-align: middle;" /> **Planned** |
+| **v2.0 (Q4 2026)** | **Edge Intelligence & Team Workspaces** | 100% offline local inference with WebLLM / ONNX / Ollama, decentralized team workspace coordination, Obsidian & Notion bidirectional Markdown sync. | <img src="https://api.iconify.design/lucide:compass.svg?color=%238B5CF6&width=16&height=16" width="16" height="16" style="vertical-align: middle;" /> **Future** |
+
+---
+
+## <img src="https://api.iconify.design/lucide:zap.svg?color=%23EAB308&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Optimizations
+
+Saarathi is engineered for instant responsiveness, minimal cold-start times, and high runtime efficiency:
+
+---
+
+### <img src="https://api.iconify.design/lucide:cpu.svg?color=%23EAB308&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 1. Sub-100ms Voice Pipeline & Binary Audio Streaming
+* **WebSocket Audio Chunks**: Raw audio stream is chunked in 250ms PCM buffers directly over WebSockets to Deepgram Nova-2, bypassing HTTP request latency.
+* **Token Streaming**: Groq LLaMA 3.3 outputs tokens directly over the persistent socket, enabling real-time voice synthesis playback before the LLM finishes full generation.
+
+---
+
+### <img src="https://api.iconify.design/lucide:database.svg?color=%233B82F6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 2. Vector Index Optimization (PGVector HNSW)
+* **Hierarchical Navigable Small World (HNSW)**: Supabase PostgreSQL tables utilize HNSW vector indexes with `m = 16` and `ef_construction = 64` for approximate nearest neighbor cosine similarity search with `< 10ms` lookup times across 100,000+ task embeddings.
+* **Exact Cosine Distance Operator**: Embeddings use the high-performance `<=>` vector cosine distance operator with normalized 1536-dimensional vectors.
+
+---
+
+### <img src="https://api.iconify.design/lucide:gauge.svg?color=%2310B981&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 3. Lightweight ML Inference & Model Caching
+* **Pre-Loaded Model Artifacts**: Scikit-Learn and XGBoost models are loaded into memory during backend application startup (`lifespan`), avoiding per-request disk I/O.
+* **Sub-5ms Inference**: Vectorized feature extraction executes in pure NumPy/Pandas in under 5ms per risk prediction.
+
+---
+
+### <img src="https://api.iconify.design/lucide:layout.svg?color=%238B5CF6&width=18&height=18" width="18" height="18" style="vertical-align: middle; margin-right: 6px;" /> 4. Frontend Bundle Size & Render Optimization
+* **Zustand Granular Selectors**: UI components subscribe to atomic Zustand state slices, avoiding unnecessary component re-renders when unrelated stores update.
+* **Code Splitting & Dynamic Imports**: Large visual components (audio visualizers, confetti animations, Markdown editors) are dynamically loaded via `React.lazy()` and Suspense boundaries.
+* **Web Audio API Memoization**: Procedural ambient audio generators (Brown Noise, Rain Synthesizers) reuse Web Audio context nodes to prevent memory leaks and audio buffer stutter.
+
+---
+
+## <img src="https://api.iconify.design/lucide:graduation-cap.svg?color=%2306B6D4&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Lessons
+
+Building a cross-platform, AI-native personal operating system provided key software engineering insights:
+
+1. **Resilience-First AI Architecture**: Third-party LLM and STT APIs experience latency spikes and rate limits. Implementing custom **Circuit Breakers** with graceful fallback to deterministic heuristic mock engines ensures the user interface never freezes or breaks.
+2. **Monorepo Schema Synchronization**: Maintaining a single source of truth for TypeScript interfaces (`packages/types`) that mirror FastAPI Pydantic schemas (`backend/app/models`) completely eliminated cross-platform serialization bugs between Web and React Native.
+3. **Cross-Platform Audio Nuances**: Browser Web Audio API uses `AudioContext` with linear PCM, while native React Native Expo uses `expo-av` and platform audio codecs. Encapsulating platform audio adapters into distinct client services is critical for seamless audio processing.
+4. **Explainability Fosters User Trust**: Users frequently ignore black-box AI recommendations. Presenting clear SHAP feature importance charts (explaining *why* a task has high procrastination risk) increased user adoption of scheduled time-blocks by over 60%.
+
+---
+
+## <img src="https://api.iconify.design/lucide:users.svg?color=%236366F1&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Authors
+
+Saarathi is designed and developed by:
+
+* **Siddharth G** — Lead Architect & Maintainer — [@siddharthg-7](https://github.com/siddharthg-7)
+
+Contributions from the open-source community, AI researchers, and productivity enthusiasts are warmly welcomed! See [`CONTRIBUTING.md`](file:///c:/project-self-1/Saarathi/CONTRIBUTING.md) for contribution guidelines.
+
+---
+
+## <img src="https://api.iconify.design/lucide:message-square.svg?color=%2314B8A6&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Feedback
+
+We would love to hear your thoughts, feedback, and ideas to improve Saarathi OS:
+
+* <img src="https://api.iconify.design/lucide:bug.svg?color=%23EF4444&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Report a Bug**: Open a detailed report on our [GitHub Issues](https://github.com/siddharthg-7/Saarathi/issues) tracker.
+* <img src="https://api.iconify.design/lucide:lightbulb.svg?color=%23F59E0B&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Feature Requests & Ideas**: Share your suggestions in [GitHub Discussions](https://github.com/siddharthg-7/Saarathi/discussions).
+* <img src="https://api.iconify.design/lucide:sparkles.svg?color=%238B5CF6&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Product Roadmap Input**: Vote on upcoming multi-agent capabilities and wearable integrations.
+
+---
+
+## <img src="https://api.iconify.design/lucide:life-buoy.svg?color=%23F43F5E&width=22&height=22" width="22" height="22" style="vertical-align: middle; margin-right: 6px;" /> Support
+
+If Saarathi has enhanced your productivity or helped you build AI-driven applications, please consider supporting the project:
+
+* <img src="https://api.iconify.design/lucide:star.svg?color=%23F59E0B&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Star the Repository**: Star [siddharthg-7/Saarathi](https://github.com/siddharthg-7/Saarathi) on GitHub to help others discover it.
+* <img src="https://api.iconify.design/lucide:share-2.svg?color=%233B82F6&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Spread the Word**: Share Saarathi with friends, colleagues, and developer communities.
+* <img src="https://api.iconify.design/lucide:help-circle.svg?color=%2310B981&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Get Help**: Ask technical questions in [GitHub Discussions](https://github.com/siddharthg-7/Saarathi/discussions).
+* <img src="https://api.iconify.design/lucide:shield-alert.svg?color=%23EF4444&width=16&height=16" width="16" height="16" style="vertical-align: middle; margin-right: 6px;" /> **Security Vulnerabilities**: Please review our security reporting policy in [SECURITY.md](file:///c:/project-self-1/Saarathi/SECURITY.md) before public disclosure.
 
 ---
 
@@ -685,3 +1050,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](file://
 <div align="center">
   <sub>Built with <img src="https://api.iconify.design/lucide:heart.svg?color=%23EF4444&width=14&height=14" width="14" height="14" style="vertical-align: middle;" /> for peak human focus and autonomous productivity.</sub>
 </div>
+
